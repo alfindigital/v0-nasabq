@@ -1,0 +1,21 @@
+{
+  "name": "Nasab",
+  "short_name": "Nasab",
+  "description": "Aplikasi silsilah keluarga untuk mengenal dan menyimpan sejarah keluargamu",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F7F5",
+  "theme_color": "#0D7C5F",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

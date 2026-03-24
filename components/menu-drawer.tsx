@@ -1,0 +1,281 @@
+'use client'
+
+import { useRef, useState } from 'react'
+import { X, Moon, Sun, Download, Upload, Trash2, Info, User } from 'lucide-react'
+import { useNasabStore } from '@/lib/store'
+
+interface MenuDrawerProps {
+  open: boolean
+  onClose: () => void
+  darkMode: boolean
+  onToggleDarkMode: () => void
+  onViewSelf: () => void
+  showToast: (message: string) => void
+}
+
+export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSelf, showToast }: MenuDrawerProps) {
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  const { members, exportData, importData, clearAllData } = useNasabStore()
+  const self = members.find(m => m.isSelf)
+
+  // Statistics
+  const maleCount = members.filter(m => m.gender === 'M').length
+  const femaleCount = members.filter(m => m.gender === 'F').length
+  const deceasedCount = members.filter(m => m.isDeceased).length
+  const spousePairs = Math.floor(members.reduce((acc, m) => 
+    acc + m.relationships.filter(r => r.type === 'spouse').length, 0
+  ) / 2)
+  
+  // Calculate generations (simple approximation)
+  const getGeneration = (memberId: number, visited = new Set<number>()): number => {
+    if (visited.has(memberId)) return 0
+    visited.add(memberId)
+    const member = members.find(m => m.id === memberId)
+    if (!member) return 0
+    const parents = member.relationships.filter(r => r.type === 'parent')
+    if (parents.length === 0) return 1
+    return 1 + Math.max(...parents.map(p => getGeneration(p.targetId, visited)))
+  }
+  const generations = self ? getGeneration(self.id) : 1
+
+  const handleExport = () => {
+    const data = exportData()
+    const json = JSON.stringify(data, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nasab-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Data berhasil diunduh!')
+  }
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string)
+        if (data.members && data.nextId) {
+          importData(data)
+          showToast('Data berhasil diimpor!')
+          setShowImport(false)
+          onClose()
+        } else {
+          showToast('Format file tidak valid')
+        }
+      } catch {
+        showToast('Gagal membaca file')
+      }
+    }
+    reader.readAsText(file)
+  }
+
+  const handleImportText = () => {
+    try {
+      const data = JSON.parse(importText)
+      if (data.members && data.nextId) {
+        importData(data)
+        showToast('Data berhasil diimpor!')
+        setShowImport(false)
+        setImportText('')
+        onClose()
+      } else {
+        showToast('Format data tidak valid')
+      }
+    } catch {
+      showToast('Format JSON tidak valid')
+    }
+  }
+
+  const handleClearAll = () => {
+    if (confirm('Hapus semua data? Tindakan ini tidak dapat dibatalkan.')) {
+      clearAllData()
+      showToast('Semua data dihapus')
+      onClose()
+    }
+  }
+
+  if (!open) return null
+
+  return (
+    <div className="fixed inset-0 z-50">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Drawer */}
+      <div className="absolute right-0 top-0 bottom-0 w-[280px] md:w-[320px] bg-card drawer-slide overflow-y-auto">
+        {/* Header */}
+        <div className="sticky top-0 bg-card z-10 p-4 border-b border-border flex items-center justify-between">
+          <h2 className="font-display font-bold text-lg">Menu</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+            aria-label="Tutup"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-6">
+          {/* Profile Section */}
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Profil</h3>
+            {self && (
+              <button
+                onClick={onViewSelf}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
+              >
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <User className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1 text-left">
+                  <p className="font-display font-semibold text-sm">{self.name}</p>
+                  <span className="inline-block px-1.5 py-0.5 text-[10px] font-semibold bg-gold/20 text-gold rounded mt-0.5">
+                    Kamu
+                  </span>
+                </div>
+              </button>
+            )}
+          </section>
+
+          {/* Appearance Section */}
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tampilan</h3>
+            <button
+              onClick={onToggleDarkMode}
+              className="w-full p-3 bg-muted rounded-lg flex items-center justify-between hover:bg-muted/80 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                {darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                <span className="text-sm font-medium">{darkMode ? 'Mode Gelap' : 'Mode Terang'}</span>
+              </div>
+              <div className={`w-10 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-border'}`}>
+                <div className={`w-5 h-5 mt-0.5 rounded-full bg-card shadow transition-transform ${darkMode ? 'translate-x-4.5 ml-0.5' : 'translate-x-0.5'}`} />
+              </div>
+            </button>
+          </section>
+
+          {/* Data Section */}
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Data</h3>
+            <div className="space-y-2">
+              <button
+                onClick={handleExport}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
+              >
+                <Download className="w-5 h-5" />
+                <span className="text-sm font-medium">Export Data</span>
+              </button>
+
+              <div>
+                <button
+                  onClick={() => setShowImport(!showImport)}
+                  className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 transition-colors"
+                >
+                  <Upload className="w-5 h-5" />
+                  <span className="text-sm font-medium">Import Data</span>
+                </button>
+                
+                {showImport && (
+                  <div className="mt-2 p-3 bg-muted/50 rounded-lg space-y-3">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".json"
+                      onChange={handleImportFile}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="w-full p-2 text-xs font-medium border border-dashed border-border rounded-lg hover:border-primary hover:text-primary transition-colors"
+                    >
+                      Pilih File JSON
+                    </button>
+                    <div className="relative">
+                      <textarea
+                        value={importText}
+                        onChange={(e) => setImportText(e.target.value)}
+                        placeholder="Atau tempel JSON di sini..."
+                        className="w-full h-20 p-2 text-xs bg-card border border-border rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                    {importText && (
+                      <button
+                        onClick={handleImportText}
+                        className="w-full p-2 text-xs font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover transition-colors"
+                      >
+                        Import
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <button
+                onClick={handleClearAll}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-destructive/10 text-destructive transition-colors"
+              >
+                <Trash2 className="w-5 h-5" />
+                <span className="text-sm font-medium">Hapus Semua Data</span>
+              </button>
+            </div>
+          </section>
+
+          {/* Statistics Section */}
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Statistik</h3>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-lg font-display font-bold text-primary">{members.length}</p>
+                <p className="text-xs text-muted-foreground">Total Anggota</p>
+              </div>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-lg font-display font-bold">{generations}</p>
+                <p className="text-xs text-muted-foreground">Generasi</p>
+              </div>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-display font-bold">{maleCount} / {femaleCount}</p>
+                <p className="text-xs text-muted-foreground">L / P</p>
+              </div>
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-lg font-display font-bold">{spousePairs}</p>
+                <p className="text-xs text-muted-foreground">Keluarga Inti</p>
+              </div>
+              {deceasedCount > 0 && (
+                <div className="p-3 bg-muted rounded-lg col-span-2">
+                  <p className="text-lg font-display font-bold">{deceasedCount}</p>
+                  <p className="text-xs text-muted-foreground">Almarhum/ah</p>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* Info Section */}
+          <section>
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Info</h3>
+            <div className="p-3 bg-muted rounded-lg flex items-start gap-3">
+              <Info className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold">Tentang Nasab</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Aplikasi silsilah keluarga untuk menyimpan dan mengenal akar keluargamu.
+                </p>
+                <p className="text-[10px] text-muted-foreground/60 mt-2">v1.0.0</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </div>
+  )
+}
