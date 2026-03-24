@@ -132,7 +132,7 @@ export function MemberList({ onViewMember }: MemberListProps) {
       <div className="sticky top-[140px] z-10 bg-muted/80 border-b border-border">
         <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           <div className="col-span-4">Nama</div>
-          <div className="col-span-2 text-center">L/P</div>
+          <div className="col-span-2 text-center">Jenis</div>
           <div className="col-span-2 text-center">Lahir</div>
           <div className="col-span-3">Hubungan</div>
           <div className="col-span-1"></div>
@@ -163,9 +163,15 @@ export function MemberList({ onViewMember }: MemberListProps) {
                   {/* Name */}
                   <div className="col-span-4 flex items-center gap-2 min-w-0">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                      member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
-                    } ${member.isDeceased ? 'grayscale opacity-60' : ''}`}>
-                      <User className={`w-3.5 h-3.5 ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
+                      member.isDeceased 
+                        ? 'bg-muted-foreground/20' 
+                        : member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                    }`}>
+                      <User className={`w-3.5 h-3.5 ${
+                        member.isDeceased 
+                          ? 'text-muted-foreground' 
+                          : member.gender === 'M' ? 'text-primary' : 'text-female-accent'
+                      }`} />
                     </div>
                     <div className="min-w-0">
                       <p className={`text-xs font-medium truncate ${member.isDeceased ? 'text-muted-foreground' : ''}`}>
@@ -181,12 +187,9 @@ export function MemberList({ onViewMember }: MemberListProps) {
 
                   {/* Gender */}
                   <div className="col-span-2 text-center">
-                    <span className={`text-xs font-medium ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`}>
-                      {member.gender === 'M' ? 'L' : 'P'}
+                    <span className={`text-[10px] font-medium ${member.isDeceased ? 'text-muted-foreground' : member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`}>
+                      {member.gender === 'M' ? 'Laki-laki' : 'Perempuan'}
                     </span>
-                    {member.isDeceased && (
-                      <span className="text-[9px] text-muted-foreground block">{member.gender === 'M' ? 'Alm' : 'Almh'}</span>
-                    )}
                   </div>
 
                   {/* Birth Year */}

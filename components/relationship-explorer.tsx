@@ -10,10 +10,10 @@ interface RelationshipExplorerProps {
   onViewMember: (member: Member) => void
 }
 
-type Mode = 'who-is' | 'between' | 'map'
+type Mode = 'between' | 'map'
 
 export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps) {
-  const [mode, setMode] = useState<Mode>('who-is')
+  const [mode, setMode] = useState<Mode>('between')
   const [selectedMember1, setSelectedMember1] = useState<number | null>(null)
   const [selectedMember2, setSelectedMember2] = useState<number | null>(null)
   const [showDropdown1, setShowDropdown1] = useState(false)
@@ -27,28 +27,24 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
   const filterMembers = (search: string, excludeId?: number) => {
     return members.filter(m => {
       if (excludeId && m.id === excludeId) return false
-      if (mode === 'who-is' && m.isSelf) return false
       const query = search.toLowerCase()
       return m.name.toLowerCase().includes(query) || 
              m.nickname?.toLowerCase().includes(query)
     })
   }
 
-  const filteredMembers1 = filterMembers(search1, mode === 'between' ? selectedMember2 || undefined : undefined)
+  const filteredMembers1 = filterMembers(search1, selectedMember2 || undefined)
   const filteredMembers2 = filterMembers(search2, selectedMember1 || undefined)
 
   const member1 = selectedMember1 ? members.find(m => m.id === selectedMember1) : null
   const member2 = selectedMember2 ? members.find(m => m.id === selectedMember2) : null
 
   const result = useMemo(() => {
-    if (mode === 'who-is' && selectedMember1 && self) {
-      return getRelationshipLabel(self.id, selectedMember1, members, getParents, getChildren, getSpouses)
-    }
     if (mode === 'between' && selectedMember1 && selectedMember2) {
       return getRelationshipLabel(selectedMember2, selectedMember1, members, getParents, getChildren, getSpouses)
     }
     return null
-  }, [mode, selectedMember1, selectedMember2, self, members, getParents, getChildren, getSpouses])
+  }, [mode, selectedMember1, selectedMember2, members, getParents, getChildren, getSpouses])
 
   const familyMap = useMemo(() => {
     if (mode !== 'map' || !self) return null
@@ -327,7 +323,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       <div className="p-4 pb-2">
         <div className="flex rounded-lg bg-muted p-1">
           {[
-            { id: 'who-is' as const, label: 'Siapa dia bagiku?' },
             { id: 'between' as const, label: 'Antara dua orang' },
             { id: 'map' as const, label: 'Peta keluargaku' },
           ].map(m => (
@@ -338,7 +333,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                 setSelectedMember1(null)
                 setSelectedMember2(null)
               }}
-              className={`flex-1 py-2 px-2 text-xs font-medium rounded-md transition-all ${
+              className={`flex-1 py-2.5 px-3 text-sm font-medium rounded-md transition-all ${
                 mode === m.id 
                   ? 'bg-card text-foreground shadow-sm' 
                   : 'text-muted-foreground hover:text-foreground'
@@ -352,48 +347,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
-        {mode === 'who-is' && (
-          <div className="space-y-4 pt-2">
-            <MemberDropdown
-              value={member1}
-              onChange={setSelectedMember1}
-              showDropdown={showDropdown1}
-              setShowDropdown={setShowDropdown1}
-              search={search1}
-              setSearch={setSearch1}
-              filteredMembers={filteredMembers1}
-              placeholder="Pilih anggota keluarga..."
-            />
-
-            {result && member1 && (
-              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
-                <div className="text-center space-y-2">
-                  {/* Name - prominent */}
-                  <p className="font-display font-bold text-2xl text-foreground">
-                    {member1.nickname || member1.name}
-                  </p>
-                  {/* Relationship status - very prominent */}
-                  <p className="font-display font-bold text-3xl text-primary">
-                    {result.label}mu
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {selectedMember1 && !result && (
-              <div className="p-4 bg-muted rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Tidak terhubung</p>
-              </div>
-            )}
-
-            {members.length < 2 && (
-              <div className="p-4 bg-muted rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Minimal 2 orang untuk melihat hubungan.</p>
-              </div>
-            )}
-          </div>
-        )}
-
         {mode === 'between' && (
           <div className="space-y-4 pt-2">
             <MemberDropdown
@@ -448,6 +401,12 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                 <p className="text-sm text-muted-foreground">Tidak terhubung</p>
               </div>
             )}
+
+            {members.length < 2 && (
+              <div className="p-4 bg-muted rounded-xl text-center">
+                <p className="text-sm text-muted-foreground">Minimal 2 orang untuk melihat hubungan.</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -483,11 +442,19 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                         className="flex-shrink-0 p-3 bg-card border border-border rounded-xl hover:border-primary/30 active:scale-[0.98] transition-all"
                       >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto ${
-                          m.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
-                        } ${m.isDeceased ? 'grayscale opacity-70' : ''}`}>
-                          <User className={`w-5 h-5 ${m.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
+                          m.isDeceased 
+                            ? 'bg-muted-foreground/20' 
+                            : m.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                        }`}>
+                          <User className={`w-5 h-5 ${
+                            m.isDeceased 
+                              ? 'text-muted-foreground' 
+                              : m.gender === 'M' ? 'text-primary' : 'text-female-accent'
+                          }`} />
                         </div>
-                        <p className="text-sm font-medium text-center mt-2 whitespace-nowrap max-w-[80px] truncate">
+                        <p className={`text-sm font-medium text-center mt-2 whitespace-nowrap max-w-[80px] truncate ${
+                          m.isDeceased ? 'text-muted-foreground' : ''
+                        }`}>
                           {m.nickname || m.name.split(' ')[0]}
                         </p>
                         <p className="text-[10px] text-muted-foreground text-center mt-0.5">

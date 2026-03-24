@@ -42,7 +42,11 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
     reader.onload = (event) => {
       try {
         const data = JSON.parse(event.target?.result as string)
-        if (data.members && data.nextId) {
+        if (data.members && Array.isArray(data.members) && typeof data.nextId === 'number') {
+          // Ensure settings exists
+          if (!data.settings) {
+            data.settings = { darkMode: false }
+          }
           importData(data)
           showToast('Data berhasil diimpor!')
           setShowImport(false)
@@ -55,12 +59,18 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
       }
     }
     reader.readAsText(file)
+    // Reset file input
+    e.target.value = ''
   }
 
   const handleImportText = () => {
     try {
       const data = JSON.parse(importText)
-      if (data.members && data.nextId) {
+      if (data.members && Array.isArray(data.members) && typeof data.nextId === 'number') {
+        // Ensure settings exists
+        if (!data.settings) {
+          data.settings = { darkMode: false }
+        }
         importData(data)
         showToast('Data berhasil diimpor!')
         setShowImport(false)
@@ -217,9 +227,20 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
             <div className="p-3 bg-muted rounded-lg flex items-start gap-3">
               <Info className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold">Tentang Nasab</p>
+                <p className="text-sm font-semibold">Tentang NasabQ</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   Aplikasi silsilah keluarga untuk menyimpan dan mengenal akar keluargamu.
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Credit to{' '}
+                  <a 
+                    href="https://alfindigital.com" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-primary hover:underline font-medium"
+                  >
+                    @alfindigital
+                  </a>
                 </p>
                 <p className="text-[10px] text-muted-foreground/60 mt-2">v1.0.0</p>
               </div>
