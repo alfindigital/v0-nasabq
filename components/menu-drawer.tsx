@@ -1,8 +1,9 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { X, Moon, Sun, Download, Upload, Trash2, Info, User } from 'lucide-react'
+import { X, Moon, Sun, Download, Upload, Trash2, Info, User, Type } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
+import type { FontSize } from '@/lib/types'
 
 interface MenuDrawerProps {
   open: boolean
@@ -18,8 +19,15 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
   const [importText, setImportText] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   
-  const { members, exportData, importData, clearAllData } = useNasabStore()
+  const { members, settings, exportData, importData, clearAllData, setFontSize } = useNasabStore()
   const self = members.find(m => m.isSelf)
+  const fontSize = settings.fontSize || 'medium'
+
+  const fontSizeOptions: { value: FontSize; label: string }[] = [
+    { value: 'small', label: 'Kecil' },
+    { value: 'medium', label: 'Sedang' },
+    { value: 'large', label: 'Besar' },
+  ]
 
   const handleExport = () => {
     const data = exportData()
@@ -141,18 +149,43 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
           {/* Appearance Section */}
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tampilan</h3>
-            <button
-              onClick={onToggleDarkMode}
-              className="w-full p-3 bg-muted rounded-lg flex items-center justify-between hover:bg-muted/80 transition-colors"
-            >
-              <div className="flex items-center gap-3">
-                {darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                <span className="text-sm font-medium">{darkMode ? 'Mode Gelap' : 'Mode Terang'}</span>
+            <div className="space-y-2">
+              <button
+                onClick={onToggleDarkMode}
+                className="w-full p-3 bg-muted rounded-lg flex items-center justify-between hover:bg-muted/80 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  {darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+                  <span className="text-sm font-medium">{darkMode ? 'Mode Gelap' : 'Mode Terang'}</span>
+                </div>
+                <div className={`relative w-10 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-border'}`}>
+                  <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-card shadow transition-all ${darkMode ? 'left-4' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              {/* Font Size */}
+              <div className="p-3 bg-muted rounded-lg">
+                <div className="flex items-center gap-3 mb-3">
+                  <Type className="w-5 h-5" />
+                  <span className="text-sm font-medium">Ukuran Font</span>
+                </div>
+                <div className="flex gap-2">
+                  {fontSizeOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      onClick={() => setFontSize(option.value)}
+                      className={`flex-1 py-2 px-3 text-xs font-medium rounded-lg transition-colors ${
+                        fontSize === option.value
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-card border border-border hover:border-primary'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className={`relative w-10 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-border'}`}>
-                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-card shadow transition-all ${darkMode ? 'left-4' : 'left-0.5'}`} />
-              </div>
-            </button>
+            </div>
           </section>
 
           {/* Data Section */}

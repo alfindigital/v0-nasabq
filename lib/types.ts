@@ -24,11 +24,14 @@ export interface Member {
   createdAt: number
 }
 
+export type FontSize = 'small' | 'medium' | 'large'
+
 export interface NasabData {
   members: Member[]
   nextId: number
   settings: {
     darkMode: boolean
+    fontSize: FontSize
   }
 }
 

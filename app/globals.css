@@ -217,3 +217,14 @@ html.dark,
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* Font Size Settings */
+html.font-small {
+  font-size: 14px;
+}
+html.font-medium {
+  font-size: 16px;
+}
+html.font-large {
+  font-size: 18px;
+}

@@ -2,7 +2,7 @@
 
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Member, NasabData, Gender, RelationshipType } from './types'
+import type { Member, NasabData, Gender, RelationshipType, FontSize } from './types'
 
 interface NasabStore extends NasabData {
   // Actions
@@ -12,6 +12,7 @@ interface NasabStore extends NasabData {
   addRelationship: (memberId: number, targetId: number, type: RelationshipType) => void
   removeRelationship: (memberId: number, targetId: number) => void
   toggleDarkMode: () => void
+  setFontSize: (size: FontSize) => void
   getSelf: () => Member | undefined
   getMember: (id: number) => Member | undefined
   getParents: (id: number) => Member[]
@@ -28,6 +29,7 @@ const initialData: NasabData = {
   nextId: 1,
   settings: {
     darkMode: false,
+    fontSize: 'medium',
   },
 }
 
@@ -112,6 +114,12 @@ export const useNasabStore = create<NasabStore>()(
       toggleDarkMode: () => {
         set((state) => ({
           settings: { ...state.settings, darkMode: !state.settings.darkMode },
+        }))
+      },
+
+      setFontSize: (size) => {
+        set((state) => ({
+          settings: { ...state.settings, fontSize: size },
         }))
       },
 

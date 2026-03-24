@@ -43,6 +43,13 @@ export default function Home() {
     }
   }, [settings.darkMode])
 
+  // Apply font size
+  useEffect(() => {
+    const fontSize = settings.fontSize || 'medium'
+    document.documentElement.classList.remove('font-small', 'font-medium', 'font-large')
+    document.documentElement.classList.add(`font-${fontSize}`)
+  }, [settings.fontSize])
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
