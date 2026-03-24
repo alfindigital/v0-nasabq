@@ -1,9 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { X, Search, User, Plus, ChevronRight, ChevronDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, Search, User, Plus, ChevronRight, ChevronDown, Trash2 } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import type { Gender } from '@/lib/types'
+
+interface RelationshipLink {
+  memberId: number
+  type: 'child' | 'parent' | 'spouse'
+}
 
 interface AddMemberSheetProps {
   open: boolean
@@ -28,10 +33,13 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
   const [deathYear, setDeathYear] = useState('')
   const [domicile, setDomicile] = useState('')
   const [notes, setNotes] = useState('')
-  const [linkTo, setLinkTo] = useState<number | null>(null)
-  const [linkType, setLinkType] = useState<'child' | 'parent' | 'spouse' | null>(null)
-  const [showLinkDropdown, setShowLinkDropdown] = useState(false)
-  const [linkSearch, setLinkSearch] = useState('')
+  
+  // Multiple relationships
+  const [relationships, setRelationships] = useState<RelationshipLink[]>([])
+  const [showAddRelation, setShowAddRelation] = useState(false)
+  const [newRelMemberId, setNewRelMemberId] = useState<number | null>(null)
+  const [newRelType, setNewRelType] = useState<'child' | 'parent' | 'spouse' | null>(null)
+  const [relSearch, setRelSearch] = useState('')
   
   const { members, addMember, addRelationship, getMember } = useNasabStore()
 
@@ -47,23 +55,23 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       setDomicile('')
       setNotes('')
       setSearch('')
-      setLinkSearch('')
-      setShowLinkDropdown(false)
+      setRelSearch('')
+      setShowAddRelation(false)
+      setNewRelMemberId(null)
+      setNewRelType(null)
       
-      if (context?.targetId) {
-        setLinkTo(context.targetId)
-        setLinkType(context.relationshipType || null)
+      if (context?.targetId && context.relationshipType) {
+        setRelationships([{ memberId: context.targetId, type: context.relationshipType }])
         // Show list view if we have context and other members
         setShowNewForm(members.length <= 1)
       } else {
-        setLinkTo(null)
-        setLinkType(null)
+        setRelationships([])
         setShowNewForm(true)
       }
     }
   }, [open, context, members.length])
 
-  const targetMember = linkTo ? members.find(m => m.id === linkTo) : null
+  const targetMember = context?.targetId ? members.find(m => m.id === context.targetId) : null
   
   // Filter existing members for selection
   const existingMembers = members.filter(m => {
@@ -75,9 +83,11 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     return true
   })
   
-  const filteredLinkMembers = members.filter(m => 
-    m.name.toLowerCase().includes(linkSearch.toLowerCase()) ||
-    m.nickname?.toLowerCase().includes(linkSearch.toLowerCase())
+  // Members available for adding relationships (exclude already linked)
+  const availableForRelation = members.filter(m => 
+    !relationships.some(r => r.memberId === m.id) &&
+    (m.name.toLowerCase().includes(relSearch.toLowerCase()) ||
+    m.nickname?.toLowerCase().includes(relSearch.toLowerCase()))
   )
 
   // Handle selecting existing member
@@ -98,6 +108,19 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     onAdded(selected.name)
   }
 
+  const handleAddRelation = () => {
+    if (!newRelMemberId || !newRelType) return
+    setRelationships([...relationships, { memberId: newRelMemberId, type: newRelType }])
+    setNewRelMemberId(null)
+    setNewRelType(null)
+    setShowAddRelation(false)
+    setRelSearch('')
+  }
+
+  const handleRemoveRelation = (index: number) => {
+    setRelationships(relationships.filter((_, i) => i !== index))
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!name.trim() || !gender) return
@@ -116,15 +139,16 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       isSelf: false,
     })
 
-    if (linkTo && linkType) {
-      if (linkType === 'child') {
-        addRelationship(newId, linkTo, 'parent')
-      } else if (linkType === 'parent') {
-        addRelationship(newId, linkTo, 'child')
-      } else if (linkType === 'spouse') {
-        addRelationship(newId, linkTo, 'spouse')
+    // Add all relationships
+    relationships.forEach(rel => {
+      if (rel.type === 'child') {
+        addRelationship(newId, rel.memberId, 'parent')
+      } else if (rel.type === 'parent') {
+        addRelationship(newId, rel.memberId, 'child')
+      } else if (rel.type === 'spouse') {
+        addRelationship(newId, rel.memberId, 'spouse')
       }
-    }
+    })
 
     onAdded(name.trim())
   }
@@ -138,6 +162,14 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       case 'parent': return `Tambah Orang Tua dari ${targetMember.nickname || targetMember.name.split(' ')[0]}`
       case 'spouse': return `Tambah Pasangan dari ${targetMember.nickname || targetMember.name.split(' ')[0]}`
       default: return 'Tambah Anggota'
+    }
+  }
+
+  const getRelationLabel = (type: 'child' | 'parent' | 'spouse') => {
+    switch (type) {
+      case 'child': return 'Anak'
+      case 'parent': return 'Orang Tua'
+      case 'spouse': return 'Pasangan'
     }
   }
 
@@ -199,9 +231,15 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       className="w-full p-3 bg-background border border-border rounded-xl flex items-center gap-3 hover:border-primary/30 active:scale-[0.98] transition-all"
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
-                        member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
-                      } ${member.isDeceased ? 'grayscale opacity-60' : ''}`}>
-                        <User className={`w-4 h-4 ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
+                        member.isDeceased 
+                          ? 'bg-muted-foreground/20' 
+                          : member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                      }`}>
+                        <User className={`w-4 h-4 ${
+                          member.isDeceased 
+                            ? 'text-muted-foreground' 
+                            : member.gender === 'M' ? 'text-primary' : 'text-female-accent'
+                        }`} />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
                         <p className="font-medium text-sm truncate">{member.name}</p>
@@ -364,103 +402,130 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 )}
               </div>
 
-              {/* Link to member (when no context) */}
-              {!context?.targetId && (
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Hubungkan dengan
-                  </label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setShowLinkDropdown(!showLinkDropdown)}
-                      className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg flex items-center justify-between"
-                    >
-                      <span className={targetMember ? 'text-foreground' : 'text-muted-foreground'}>
-                        {targetMember?.name || 'Pilih anggota...'}
-                      </span>
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    </button>
-
-                    {showLinkDropdown && (
-                      <div className="absolute top-12 left-0 right-0 bg-card border border-border rounded-lg shadow-lg z-10 max-h-48 overflow-hidden">
-                        <div className="p-2 border-b border-border">
-                          <div className="relative">
-                            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                            <input
-                              type="text"
-                              value={linkSearch}
-                              onChange={(e) => setLinkSearch(e.target.value)}
-                              placeholder="Cari..."
-                              className="w-full h-8 pl-8 pr-3 text-sm bg-background border border-border rounded focus:outline-none"
-                              autoFocus
-                            />
+              {/* Relationships */}
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Hubungkan dengan
+                </label>
+                
+                {/* Existing relationships */}
+                {relationships.length > 0 && (
+                  <div className="space-y-2 mb-2">
+                    {relationships.map((rel, idx) => {
+                      const member = getMember(rel.memberId)
+                      if (!member) return null
+                      return (
+                        <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{member.nickname || member.name}</p>
+                            <p className="text-xs text-muted-foreground">{getRelationLabel(rel.type)}</p>
                           </div>
-                        </div>
-                        <div className="max-h-36 overflow-y-auto">
-                          {targetMember && (
+                          {!(context?.targetId === rel.memberId) && (
                             <button
                               type="button"
-                              onClick={() => {
-                                setLinkTo(null)
-                                setLinkType(null)
-                                setShowLinkDropdown(false)
-                              }}
-                              className="w-full px-3 py-2 text-sm text-left text-muted-foreground hover:bg-muted"
+                              onClick={() => handleRemoveRelation(idx)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-background"
                             >
-                              Tidak ada
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
                             </button>
                           )}
-                          {filteredLinkMembers.map(m => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => {
-                                setLinkTo(m.id)
-                                setShowLinkDropdown(false)
-                                setLinkSearch('')
-                              }}
-                              className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
-                            >
-                              <span className="truncate">{m.name}</span>
-                              {m.isSelf && (
-                                <span className="px-1 py-0.5 text-[9px] font-semibold bg-gold/20 text-gold rounded flex-shrink-0">
-                                  Kamu
-                                </span>
-                              )}
-                            </button>
-                          ))}
                         </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* Add relationship UI */}
+                {!showAddRelation ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddRelation(true)}
+                    className="w-full p-2.5 text-sm text-primary bg-primary/5 border border-dashed border-primary/30 rounded-lg hover:bg-primary/10 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Tambah Hubungan
+                  </button>
+                ) : (
+                  <div className="p-3 bg-muted rounded-lg space-y-3">
+                    {/* Member selector */}
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={relSearch}
+                        onChange={(e) => setRelSearch(e.target.value)}
+                        placeholder="Cari anggota..."
+                        className="w-full h-9 pl-8 pr-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      />
+                    </div>
+                    
+                    {availableForRelation.length > 0 ? (
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {availableForRelation.slice(0, 5).map(m => (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => setNewRelMemberId(m.id)}
+                            className={`w-full p-2 text-sm text-left rounded flex items-center gap-2 transition-colors ${
+                              newRelMemberId === m.id ? 'bg-primary/10 text-primary' : 'hover:bg-background'
+                            }`}
+                          >
+                            <User className="w-3.5 h-3.5" />
+                            <span className="truncate">{m.nickname || m.name}</span>
+                            {m.isSelf && <span className="text-[9px] px-1 bg-gold/20 text-gold rounded">Kamu</span>}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground text-center py-2">Tidak ada anggota tersedia</p>
+                    )}
+
+                    {/* Relation type */}
+                    {newRelMemberId && (
+                      <div className="flex gap-2">
+                        {(['child', 'parent', 'spouse'] as const).map(type => (
+                          <button
+                            key={type}
+                            type="button"
+                            onClick={() => setNewRelType(type)}
+                            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+                              newRelType === type
+                                ? 'bg-primary text-primary-foreground'
+                                : 'bg-background border border-border hover:border-primary/30'
+                            }`}
+                          >
+                            {getRelationLabel(type)}
+                          </button>
+                        ))}
                       </div>
                     )}
-                  </div>
 
-                  {/* Relationship type selector */}
-                  {linkTo && (
-                    <div className="mt-3 space-y-2">
-                      <p className="text-xs text-muted-foreground">Jenis Hubungan:</p>
-                      {[
-                        { type: 'child' as const, label: `${name || 'Orang ini'} anak dari ${targetMember?.nickname || targetMember?.name.split(' ')[0]}` },
-                        { type: 'parent' as const, label: `${name || 'Orang ini'} orang tua dari ${targetMember?.nickname || targetMember?.name.split(' ')[0]}` },
-                        { type: 'spouse' as const, label: `${name || 'Orang ini'} pasangan dari ${targetMember?.nickname || targetMember?.name.split(' ')[0]}` },
-                      ].map(opt => (
-                        <button
-                          key={opt.type}
-                          type="button"
-                          onClick={() => setLinkType(opt.type)}
-                          className={`w-full p-3 text-sm text-left rounded-lg border transition-all ${
-                            linkType === opt.type
-                              ? 'border-primary bg-primary/5 text-primary'
-                              : 'border-border hover:border-primary/30'
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
+                    {/* Action buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAddRelation(false)
+                          setNewRelMemberId(null)
+                          setNewRelType(null)
+                          setRelSearch('')
+                        }}
+                        className="flex-1 py-2 text-xs font-medium bg-background border border-border rounded-lg hover:bg-muted"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleAddRelation}
+                        disabled={!newRelMemberId || !newRelType}
+                        className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover disabled:opacity-50"
+                      >
+                        Tambah
+                      </button>
                     </div>
-                  )}
-                </div>
-              )}
+                  </div>
+                )}
+              </div>
 
               {/* Notes */}
               <div>
