@@ -44,6 +44,9 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
   
   const { members, addMember, addRelationship, getMember } = useNasabStore()
 
+  // Valid to submit if name and gender are filled
+  const isValid = name.trim() && gender
+
   // Reset form when opening/closing
   useEffect(() => {
     if (open) {
@@ -169,6 +172,10 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     return Object.keys(newErrors).length === 0
   }
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!validateForm()) return
+
     const newId = addMember({
       name: name.trim(),
       nickname: nickname.trim() || null,
@@ -195,8 +202,6 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
     onAdded(name.trim())
   }
-
-  const isValid = name.trim() && gender
 
   const getContextLabel = () => {
     if (!targetMember || !context?.relationshipType) return 'Tambah Anggota'
