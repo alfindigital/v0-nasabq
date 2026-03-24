@@ -119,10 +119,18 @@ html.dark,
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
 }
 
-/* Canvas dot pattern */
+/* Canvas dot pattern - consistent for both light and dark modes */
 .canvas-pattern {
-  background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(circle, var(--dot-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+:root {
+  --dot-color: rgba(107, 127, 120, 0.4);
+}
+
+.dark {
+  --dot-color: rgba(139, 159, 152, 0.3);
 }
 
 /* Self node gold pulse animation */
