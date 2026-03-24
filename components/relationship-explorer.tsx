@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { Search, ChevronDown, User, X } from 'lucide-react'
+import { Search, ChevronDown, User } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
-import { getRelationshipLabel, getRelationToSelf } from '@/lib/relationship'
+import { getRelationshipLabel } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
 
 interface RelationshipExplorerProps {
@@ -257,7 +257,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
     setSearch,
     filteredMembers,
     placeholder,
-    excludeSelf
   }: {
     value: Member | null
     onChange: (id: number | null) => void
@@ -267,7 +266,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
     setSearch: (v: string) => void
     filteredMembers: Member[]
     placeholder: string
-    excludeSelf?: boolean
   }) => (
     <div className="relative">
       <button
@@ -378,22 +376,16 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
               setSearch={setSearch1}
               filteredMembers={filteredMembers1}
               placeholder="Pilih anggota keluarga..."
-              excludeSelf
             />
 
             {result && member1 && (
-              <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
-                <p className="text-center">
-                  <span className="font-display font-bold text-lg text-primary">{member1.name}</span>
-                  <span className="text-sm text-foreground"> adalah </span>
-                  <span className="font-display font-bold text-lg text-primary">{result.label}</span>
-                  <span className="text-sm text-foreground"> kamu</span>
-                </p>
-                {result.explanation && (
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    {result.explanation}
-                  </p>
-                )}
+              <div className="p-5 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
+                <div className="text-center space-y-2">
+                  <p className="font-display font-bold text-xl text-foreground">{member1.name}</p>
+                  <p className="text-sm text-muted-foreground">adalah</p>
+                  <p className="font-display font-bold text-2xl text-primary">{result.label}</p>
+                  <p className="text-sm text-muted-foreground">kamu</p>
+                </div>
               </div>
             )}
 
@@ -443,19 +435,14 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             />
 
             {result && member1 && member2 && (
-              <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
-                <p className="text-center">
-                  <span className="font-display font-bold text-primary">{member1.name}</span>
-                  <span className="text-sm text-foreground"> adalah </span>
-                  <span className="font-display font-bold text-primary">{result.label}</span>
-                  <span className="text-sm text-foreground"> dari </span>
-                  <span className="font-display font-bold text-primary">{member2.name}</span>
-                </p>
-                {result.explanation && (
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    {result.explanation}
-                  </p>
-                )}
+              <div className="p-5 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
+                <div className="text-center space-y-2">
+                  <p className="font-display font-bold text-xl text-foreground">{member1.name}</p>
+                  <p className="text-sm text-muted-foreground">adalah</p>
+                  <p className="font-display font-bold text-2xl text-primary">{result.label}</p>
+                  <p className="text-sm text-muted-foreground">dari</p>
+                  <p className="font-display font-bold text-xl text-foreground">{member2.name}</p>
+                </div>
               </div>
             )}
 
@@ -498,8 +485,10 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                         onClick={() => onViewMember(m)}
                         className="flex-shrink-0 p-3 bg-card border border-border rounded-xl hover:border-primary/30 active:scale-[0.98] transition-all"
                       >
-                        <div className={`w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mx-auto ${m.isDeceased ? 'grayscale opacity-70' : ''}`}>
-                          <User className="w-5 h-5 text-primary" />
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto ${
+                          m.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                        } ${m.isDeceased ? 'grayscale opacity-70' : ''}`}>
+                          <User className={`w-5 h-5 ${m.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
                         </div>
                         <p className="text-sm font-medium text-center mt-2 whitespace-nowrap max-w-[80px] truncate">
                           {m.nickname || m.name.split(' ')[0]}
