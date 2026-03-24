@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { TreePine, List, Link2, Search, Plus } from 'lucide-react'
+import { TreePine, List, Link2, Menu, Plus } from 'lucide-react'
 import type { ViewType } from '@/lib/types'
 import { useNasabStore } from '@/lib/store'
 
@@ -9,9 +9,10 @@ interface BottomNavProps {
   activeView: ViewType
   onViewChange: (view: ViewType) => void
   onAddClick: () => void
+  onMenuClick: () => void
 }
 
-export function BottomNav({ activeView, onViewChange, onAddClick }: BottomNavProps) {
+export function BottomNav({ activeView, onViewChange, onAddClick, onMenuClick }: BottomNavProps) {
   const [showPulse, setShowPulse] = useState(false)
   const members = useNasabStore((state) => state.members)
 
@@ -31,7 +32,6 @@ export function BottomNav({ activeView, onViewChange, onAddClick }: BottomNavPro
 
   const rightTabs = [
     { id: 'relationship' as const, icon: Link2, label: 'Hubungan' },
-    { id: 'search' as const, icon: Search, label: 'Cari' },
   ]
 
   return (
@@ -73,6 +73,15 @@ export function BottomNav({ activeView, onViewChange, onAddClick }: BottomNavPro
           <span className="text-[10px] font-medium">{tab.label}</span>
         </button>
       ))}
+
+      {/* Menu button */}
+      <button
+        onClick={onMenuClick}
+        className="flex-1 h-full flex flex-col items-center justify-center gap-0.5 transition-colors text-muted-foreground hover:text-foreground"
+      >
+        <Menu className="w-5 h-5" />
+        <span className="text-[10px] font-medium">Menu</span>
+      </button>
     </nav>
   )
 }

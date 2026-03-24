@@ -8,7 +8,6 @@ import { BottomNav } from '@/components/bottom-nav'
 import { TreeCanvas } from '@/components/tree-canvas'
 import { MemberList } from '@/components/member-list'
 import { RelationshipExplorer } from '@/components/relationship-explorer'
-import { SearchOverlay } from '@/components/search-overlay'
 import { MenuDrawer } from '@/components/menu-drawer'
 import { AddMemberSheet } from '@/components/add-member-sheet'
 import { MemberDetailSheet } from '@/components/member-detail-sheet'
@@ -47,10 +46,6 @@ export default function Home() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' && !addSheetOpen && !detailSheetOpen && !menuOpen) {
-        e.preventDefault()
-        setActiveView('search')
-      }
       if (e.key === 'Escape') {
         if (addSheetOpen) setAddSheetOpen(false)
         else if (detailSheetOpen) setDetailSheetOpen(false)
@@ -103,7 +98,7 @@ export default function Home() {
 
   return (
     <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
-      <Header onMenuOpen={() => setMenuOpen(true)} />
+      <Header />
       
       <main className="flex-1 overflow-hidden relative">
         {activeView === 'tree' && (
@@ -122,17 +117,13 @@ export default function Home() {
             onViewMember={handleViewMember}
           />
         )}
-        {activeView === 'search' && (
-          <SearchOverlay 
-            onSelectMember={handleViewMember}
-          />
-        )}
       </main>
 
       <BottomNav 
         activeView={activeView}
         onViewChange={setActiveView}
         onAddClick={() => handleAddMember()}
+        onMenuClick={() => setMenuOpen(true)}
       />
 
       {/* Overlays and Sheets */}

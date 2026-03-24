@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo } from 'react'
-import { ChevronRight, User, Users, Heart } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { ChevronRight, User, Users, Heart, Search, X } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
@@ -13,6 +13,7 @@ interface MemberListProps {
 export function MemberList({ onViewMember }: MemberListProps) {
   const { members, getParents, getChildren, getSpouses } = useNasabStore()
   const self = members.find(m => m.isSelf)
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Statistics
   const stats = useMemo(() => {
@@ -36,8 +37,8 @@ export function MemberList({ onViewMember }: MemberListProps) {
     return { maleCount, femaleCount, spousePairs, generations, total: members.length }
   }, [members, self])
 
-  // Sort members
-  const sortedMembers = useMemo(() => {
+  // Sort and filter members
+  const filteredMembers = useMemo(() => {
     const getGeneration = (id: number, visited = new Set<number>()): number => {
       if (visited.has(id)) return 0
       visited.add(id)
@@ -46,7 +47,20 @@ export function MemberList({ onViewMember }: MemberListProps) {
       return 1 + Math.max(...parents.map(p => getGeneration(p.id, new Set(visited))))
     }
 
-    return [...members].sort((a, b) => {
+    let result = [...members]
+    
+    // Filter by search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      result = result.filter(m => 
+        m.name.toLowerCase().includes(query) ||
+        (m.nickname && m.nickname.toLowerCase().includes(query)) ||
+        (m.address && m.address.toLowerCase().includes(query))
+      )
+    }
+
+    // Sort
+    return result.sort((a, b) => {
       if (a.isSelf) return -1
       if (b.isSelf) return 1
       const genA = getGeneration(a.id)
@@ -54,7 +68,7 @@ export function MemberList({ onViewMember }: MemberListProps) {
       if (genA !== genB) return genA - genB
       return a.name.localeCompare(b.name)
     })
-  }, [members, getParents])
+  }, [members, getParents, searchQuery])
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -90,10 +104,32 @@ export function MemberList({ onViewMember }: MemberListProps) {
             </div>
           </div>
         </div>
+
+        {/* Search Bar */}
+        <div className="px-3 pb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari anggota keluarga..."
+              className="w-full h-10 pl-9 pr-9 bg-card border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full hover:bg-muted"
+              >
+                <X className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-[76px] z-10 bg-muted/80 border-b border-border">
+      <div className="sticky top-[140px] z-10 bg-muted/80 border-b border-border">
         <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           <div className="col-span-4">Nama</div>
           <div className="col-span-2 text-center">L/P</div>
@@ -105,13 +141,15 @@ export function MemberList({ onViewMember }: MemberListProps) {
 
       {/* Member List */}
       <div className="flex-1 overflow-y-auto">
-        {sortedMembers.length === 0 ? (
+        {filteredMembers.length === 0 ? (
           <div className="h-full flex items-center justify-center p-4">
-            <p className="text-sm text-muted-foreground">Belum ada anggota keluarga.</p>
+            <p className="text-sm text-muted-foreground">
+              {searchQuery ? 'Tidak ditemukan.' : 'Belum ada anggota keluarga.'}
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-border/50">
-            {sortedMembers.map(member => {
+            {filteredMembers.map(member => {
               const relationLabel = self && !member.isSelf
                 ? getRelationToSelf(member.id, self.id, members, getParents, getChildren, getSpouses)
                 : ''

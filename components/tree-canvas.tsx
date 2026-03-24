@@ -530,6 +530,8 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           onReset={handleFitToScreen}
           onToggleAll={handleToggleAll}
           isAllExpanded={collapsedNodes.size === 0}
+          members={members}
+          onSelectMember={onViewMember}
         />
       </div>
     )
@@ -635,6 +637,8 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
         onReset={handleFitToScreen}
         onToggleAll={handleToggleAll}
         isAllExpanded={collapsedNodes.size === 0}
+        members={members}
+        onSelectMember={onViewMember}
       />
     </div>
   )

@@ -32,7 +32,7 @@ export interface NasabData {
   }
 }
 
-export type ViewType = 'tree' | 'list' | 'relationship' | 'search'
+export type ViewType = 'tree' | 'list' | 'relationship'
 
 export type RelationshipLabel = 
   | 'Ayah' | 'Ibu' 
