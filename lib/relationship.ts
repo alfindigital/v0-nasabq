@@ -1,4 +1,4 @@
-import type { Member, Gender } from './types'
+import type { Member } from './types'
 
 type Direction = 'up' | 'down' | 'lateral'
 
@@ -37,7 +37,7 @@ export function findPath(
   while (queue.length > 0) {
     const current = queue.shift()!
     
-    if (current.steps.length > 8) continue // Max depth
+    if (current.steps.length > 10) continue // Max depth increased
     if (visited.has(current.id)) continue
     visited.add(current.id)
     
@@ -110,26 +110,17 @@ export function pathToLabel(
   
   // === DIRECT RELATIONSHIPS (1 step) ===
   
-  // 'up' = I went to my parent, so target is my PARENT
   if (pathStr === 'up') return isMale ? 'Ayah' : 'Ibu'
-  
-  // 'down' = I went to my child, so target is my CHILD
   if (pathStr === 'down') return isMale ? 'Anak laki-laki' : 'Anak perempuan'
-  
-  // 'lateral' = I went to my spouse, so target is my SPOUSE
   if (pathStr === 'lateral') return isMale ? 'Suami' : 'Istri'
   
   // === GRANDPARENTS/GRANDCHILDREN (2 steps) ===
   
-  // 'up,up' = parent's parent = GRANDPARENT
   if (pathStr === 'up,up') return isMale ? 'Kakek' : 'Nenek'
-  
-  // 'down,down' = child's child = GRANDCHILD
   if (pathStr === 'down,down') return isMale ? 'Cucu laki-laki' : 'Cucu perempuan'
   
   // === SIBLINGS (2 steps via parent) ===
   
-  // 'up,down' = parent's child (not me) = SIBLING
   if (pathStr === 'up,down') {
     const older = isOlder()
     if (older === true) return isMale ? 'Kakak laki-laki' : 'Kakak perempuan'
@@ -142,100 +133,182 @@ export function pathToLabel(
   if (pathStr === 'up,up,up') return isMale ? 'Buyut (kakek)' : 'Buyut (nenek)'
   if (pathStr === 'down,down,down') return isMale ? 'Cicit laki-laki' : 'Cicit perempuan'
   
-  // === IN-LAWS ===
+  // === GREAT-GREAT GRANDPARENTS/CHILDREN (4 steps) ===
   
-  // 'lateral,up' = spouse's parent = PARENT-IN-LAW (Mertua)
+  if (pathStr === 'up,up,up,up') return isMale ? 'Canggah (kakek)' : 'Canggah (nenek)'
+  if (pathStr === 'down,down,down,down') return isMale ? 'Piut laki-laki' : 'Piut perempuan'
+  
+  // === IN-LAWS (Spouse's family) ===
+  
+  // Spouse's parent = Mertua
   if (pathStr === 'lateral,up') return isMale ? 'Ayah mertua' : 'Ibu mertua'
   
-  // 'down,lateral' = child's spouse = CHILD-IN-LAW (Menantu)
-  if (pathStr === 'down,lateral') return isMale ? 'Menantu laki-laki' : 'Menantu perempuan'
-  
-  // 'lateral,up,down' = spouse's sibling = SIBLING-IN-LAW (Ipar)
-  if (pathStr === 'lateral,up,down') return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
-  
-  // 'up,down,lateral' = sibling's spouse = SIBLING-IN-LAW (Ipar)
-  if (pathStr === 'up,down,lateral') return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
-  
-  // 'down,lateral,up' = child's spouse's parent = CO-PARENT-IN-LAW (Besan)
-  if (pathStr === 'down,lateral,up') return isMale ? 'Besan (laki-laki)' : 'Besan (perempuan)'
-  
-  // === UNCLES/AUNTS & NEPHEWS/NIECES ===
-  
-  // 'up,up,down' = parent's sibling = UNCLE/AUNT
-  if (pathStr === 'up,up,down') return isMale ? 'Paman' : 'Bibi'
-  
-  // 'up,down,down' = sibling's child = NEPHEW/NIECE
-  if (pathStr === 'up,down,down') return isMale ? 'Keponakan laki-laki' : 'Keponakan perempuan'
-  
-  // === COUSINS ===
-  
-  // 'up,up,down,down' = parent's sibling's child = COUSIN
-  if (pathStr === 'up,up,down,down') return isMale ? 'Sepupu laki-laki' : 'Sepupu perempuan'
-  
-  // === EXTENDED IN-LAWS ===
-  
-  // Spouse's grandparents
+  // Spouse's grandparent
   if (pathStr === 'lateral,up,up') return isMale ? 'Kakek mertua' : 'Nenek mertua'
   
-  // Spouse's uncle/aunt
+  // Spouse's sibling = Ipar
+  if (pathStr === 'lateral,up,down') return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
+  
+  // Spouse's sibling's spouse = Ipar (also)
+  if (pathStr === 'lateral,up,down,lateral') return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
+  
+  // Spouse's sibling's child = Keponakan ipar
+  if (pathStr === 'lateral,up,down,down') return isMale ? 'Keponakan ipar laki-laki' : 'Keponakan ipar perempuan'
+  
+  // Spouse's uncle/aunt = Paman/Bibi mertua
   if (pathStr === 'lateral,up,up,down') return isMale ? 'Paman mertua' : 'Bibi mertua'
+  
+  // === IN-LAWS (Your family's spouses) ===
+  
+  // Child's spouse = Menantu
+  if (pathStr === 'down,lateral') return isMale ? 'Menantu laki-laki' : 'Menantu perempuan'
   
   // Grandchild's spouse
   if (pathStr === 'down,down,lateral') return isMale ? 'Suami cucu' : 'Istri cucu'
   
-  // Child-in-law's sibling (ipar from menantu)
-  if (pathStr === 'down,lateral,up,down') return isMale ? 'Ipar menantu (laki-laki)' : 'Ipar menantu (perempuan)'
+  // Sibling's spouse = Ipar
+  if (pathStr === 'up,down,lateral') return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
   
-  // Child-in-law's parent's other children (besan's other kids)
-  if (pathStr === 'down,lateral,up,down') return isMale ? 'Anak besan laki-laki' : 'Anak besan perempuan'
+  // Parent's sibling's spouse = Paman/Bibi (by marriage)
+  if (pathStr === 'up,up,down,lateral') return isMale ? 'Paman' : 'Bibi'
   
-  // Great uncle/aunt
+  // === BESAN (Co-parent-in-law) ===
+  
+  // Child's spouse's parent = Besan
+  if (pathStr === 'down,lateral,up') return isMale ? 'Besan laki-laki' : 'Besan perempuan'
+  
+  // Child's spouse's grandparent
+  if (pathStr === 'down,lateral,up,up') return isMale ? 'Orang tua besan laki-laki' : 'Orang tua besan perempuan'
+  
+  // Child's spouse's sibling
+  if (pathStr === 'down,lateral,up,down') return isMale ? 'Adik/Kakak ipar menantu laki-laki' : 'Adik/Kakak ipar menantu perempuan'
+  
+  // === UNCLES/AUNTS & NEPHEWS/NIECES ===
+  
+  // Parent's sibling = Paman/Bibi
+  if (pathStr === 'up,up,down') return isMale ? 'Paman' : 'Bibi'
+  
+  // Sibling's child = Keponakan
+  if (pathStr === 'up,down,down') return isMale ? 'Keponakan laki-laki' : 'Keponakan perempuan'
+  
+  // Grandparent's sibling = Paman/Bibi buyut
   if (pathStr === 'up,up,up,down') return isMale ? 'Paman buyut' : 'Bibi buyut'
   
-  // Great nephew/niece
-  if (pathStr === 'up,down,down,down') return isMale ? 'Cicit keponakan laki-laki' : 'Cicit keponakan perempuan'
+  // Sibling's grandchild = Cucu keponakan
+  if (pathStr === 'up,down,down,down') return isMale ? 'Cucu keponakan laki-laki' : 'Cucu keponakan perempuan'
   
-  // Second cousin (parent's cousin's child)
-  if (pathStr === 'up,up,up,down,down') return isMale ? 'Sepupu jauh laki-laki' : 'Sepupu jauh perempuan'
+  // === COUSINS ===
+  
+  // Parent's sibling's child = Sepupu
+  if (pathStr === 'up,up,down,down') return isMale ? 'Sepupu laki-laki' : 'Sepupu perempuan'
+  
+  // Parent's cousin = Sepupu orang tua
+  if (pathStr === 'up,up,up,down,down') return isMale ? 'Sepupu ayah/ibu laki-laki' : 'Sepupu ayah/ibu perempuan'
+  
+  // Cousin's child = Anak sepupu / Keponakan sepupu
   if (pathStr === 'up,up,down,down,down') return isMale ? 'Anak sepupu laki-laki' : 'Anak sepupu perempuan'
   
-  // === FALLBACK BASED ON PATTERN ANALYSIS ===
+  // Second cousin (parent's cousin's child)
+  if (pathStr === 'up,up,up,down,down,down') return isMale ? 'Sepupu kedua laki-laki' : 'Sepupu kedua perempuan'
+  
+  // Cousin's spouse
+  if (pathStr === 'up,up,down,down,lateral') return isMale ? 'Suami sepupu' : 'Istri sepupu'
+  
+  // === EXTENDED RELATIONSHIPS ===
+  
+  // Great uncle/aunt's child = Sepupu orang tua
+  if (pathStr === 'up,up,up,down,down') return isMale ? 'Sepupu orang tua laki-laki' : 'Sepupu orang tua perempuan'
+  
+  // === ANALYZE PATH PATTERN FOR FALLBACK ===
   
   const upCount = path.filter(d => d === 'up').length
   const downCount = path.filter(d => d === 'down').length
   const lateralCount = path.filter(d => d === 'lateral').length
   
-  // Through marriage
+  // Through spouse (in-law family)
   if (lateralCount > 0) {
+    // Path starts with lateral = spouse's family
     if (path[0] === 'lateral') {
-      // Starting with spouse = spouse's family
-      if (upCount > downCount) return isMale ? 'Keluarga mertua (laki-laki)' : 'Keluarga mertua (perempuan)'
-      if (downCount > upCount) return isMale ? 'Keluarga mertua (laki-laki)' : 'Keluarga mertua (perempuan)'
-      return 'Keluarga mertua'
+      const relUpCount = path.slice(1).filter(d => d === 'up').length
+      const relDownCount = path.slice(1).filter(d => d === 'down').length
+      
+      if (relUpCount > relDownCount) {
+        const gen = relUpCount - relDownCount
+        if (gen === 1) return isMale ? 'Keluarga mertua laki-laki' : 'Keluarga mertua perempuan'
+        if (gen === 2) return isMale ? 'Keluarga kakek mertua laki-laki' : 'Keluarga nenek mertua perempuan'
+        return isMale ? 'Keluarga mertua generasi atas' : 'Keluarga mertua generasi atas'
+      }
+      if (relDownCount > relUpCount) {
+        return isMale ? 'Keluarga mertua generasi bawah laki-laki' : 'Keluarga mertua generasi bawah perempuan'
+      }
+      return isMale ? 'Keluarga mertua laki-laki' : 'Keluarga mertua perempuan'
     }
+    
+    // Path starts with down then lateral = child's in-law family (besan)
+    if (path[0] === 'down' && path.includes('lateral')) {
+      const lateralIdx = path.indexOf('lateral')
+      if (lateralIdx > 0) {
+        const afterLateral = path.slice(lateralIdx + 1)
+        if (afterLateral.filter(d => d === 'up').length > 0) {
+          return isMale ? 'Keluarga besan laki-laki' : 'Keluarga besan perempuan'
+        }
+        if (afterLateral.filter(d => d === 'down').length > 0) {
+          return isMale ? 'Keluarga menantu laki-laki' : 'Keluarga menantu perempuan'
+        }
+      }
+      return isMale ? 'Keluarga menantu laki-laki' : 'Keluarga menantu perempuan'
+    }
+    
+    // Path ends with lateral = someone's spouse
     if (path[path.length - 1] === 'lateral') {
-      // Ending with spouse = someone's spouse
-      return isMale ? 'Keluarga besan laki-laki' : 'Keluarga besan perempuan'
+      const beforeLateral = path.slice(0, -1)
+      const beforeUp = beforeLateral.filter(d => d === 'up').length
+      const beforeDown = beforeLateral.filter(d => d === 'down').length
+      
+      if (beforeUp > beforeDown) {
+        return isMale ? 'Suami kerabat' : 'Istri kerabat'
+      }
+      if (beforeDown > beforeUp) {
+        return isMale ? 'Suami kerabat' : 'Istri kerabat'
+      }
     }
-    return 'Kerabat melalui pernikahan'
+    
+    return isMale ? 'Kerabat laki-laki' : 'Kerabat perempuan'
   }
   
-  // Blood relatives
+  // Blood relatives only
   if (upCount > downCount) {
     const diff = upCount - downCount
-    if (diff === 1) return isMale ? 'Paman/Sepupu tua laki-laki' : 'Bibi/Sepupu tua perempuan'
-    if (diff === 2) return isMale ? 'Kerabat generasi atas (laki-laki)' : 'Kerabat generasi atas (perempuan)'
-    return 'Leluhur'
+    if (diff === 1) {
+      // Same generation as parents' siblings
+      return isMale ? 'Sepupu orang tua laki-laki' : 'Sepupu orang tua perempuan'
+    }
+    if (diff === 2) {
+      return isMale ? 'Sepupu kakek/nenek laki-laki' : 'Sepupu kakek/nenek perempuan'
+    }
+    return isMale ? 'Leluhur laki-laki' : 'Leluhur perempuan'
   }
   
   if (downCount > upCount) {
     const diff = downCount - upCount
-    if (diff === 1) return isMale ? 'Keponakan/Sepupu muda laki-laki' : 'Keponakan/Sepupu muda perempuan'
-    if (diff === 2) return isMale ? 'Kerabat generasi bawah (laki-laki)' : 'Kerabat generasi bawah (perempuan)'
-    return 'Keturunan'
+    if (diff === 1) {
+      return isMale ? 'Anak sepupu laki-laki' : 'Anak sepupu perempuan'
+    }
+    if (diff === 2) {
+      return isMale ? 'Cucu sepupu laki-laki' : 'Cucu sepupu perempuan'
+    }
+    return isMale ? 'Keturunan laki-laki' : 'Keturunan perempuan'
   }
   
-  // Same generation
+  // Same generation (upCount === downCount)
+  if (upCount === downCount && upCount > 0) {
+    if (upCount === 1) return isMale ? 'Saudara laki-laki' : 'Saudara perempuan'
+    if (upCount === 2) return isMale ? 'Sepupu laki-laki' : 'Sepupu perempuan'
+    if (upCount === 3) return isMale ? 'Sepupu kedua laki-laki' : 'Sepupu kedua perempuan'
+    if (upCount === 4) return isMale ? 'Sepupu ketiga laki-laki' : 'Sepupu ketiga perempuan'
+    return isMale ? 'Sepupu jauh laki-laki' : 'Sepupu jauh perempuan'
+  }
+  
   return isMale ? 'Kerabat laki-laki' : 'Kerabat perempuan'
 }
 
@@ -292,27 +365,39 @@ export function getRelationToSelf(
   if (label === 'Tidak terhubung') return ''
   
   // Convert to possessive Indonesian form
-  if (label === 'Ayah') return 'Ayahmu'
-  if (label === 'Ibu') return 'Ibumu'
-  if (label === 'Suami') return 'Suamimu'
-  if (label === 'Istri') return 'Istrimu'
-  if (label === 'Kakek') return 'Kakekmu'
-  if (label === 'Nenek') return 'Nenekmu'
-  if (label === 'Paman') return 'Pamanmu'
-  if (label === 'Bibi') return 'Bibimu'
-  if (label.startsWith('Anak')) return label.replace('Anak', 'Anakmu')
-  if (label.startsWith('Cucu')) return label.replace('Cucu', 'Cucumu')
-  if (label.startsWith('Cicit')) return label.replace('Cicit', 'Cicitmu')
-  if (label.startsWith('Kakak')) return label.replace('Kakak', 'Kakakmu')
-  if (label.startsWith('Adik')) return label.replace('Adik', 'Adikmu')
-  if (label.startsWith('Saudara')) return label.replace('Saudara', 'Saudaramu')
-  if (label.startsWith('Keponakan')) return label.replace('Keponakan', 'Keponakanmu')
-  if (label.startsWith('Sepupu')) return label.replace('Sepupu', 'Sepupumu')
-  if (label.includes('mertua')) return label
-  if (label.includes('Menantu')) return label.replace('Menantu', 'Menantumu')
-  if (label.includes('Ipar')) return label.replace('Ipar', 'Iparmu')
-  if (label.includes('Besan')) return label.replace('Besan', 'Besanmu')
-  if (label.includes('Buyut')) return label.replace('Buyut', 'Buyutmu')
+  const conversions: Record<string, string> = {
+    'Ayah': 'Ayahmu',
+    'Ibu': 'Ibumu',
+    'Suami': 'Suamimu',
+    'Istri': 'Istrimu',
+    'Kakek': 'Kakekmu',
+    'Nenek': 'Nenekmu',
+    'Paman': 'Pamanmu',
+    'Bibi': 'Bibimu',
+    'Ayah mertua': 'Ayah mertuamu',
+    'Ibu mertua': 'Ibu mertuamu',
+    'Kakek mertua': 'Kakek mertuamu',
+    'Nenek mertua': 'Nenek mertuamu',
+  }
+  
+  if (conversions[label]) return conversions[label]
+  
+  // Pattern-based conversions
+  if (label.startsWith('Anak ')) return label.replace('Anak ', 'Anakmu ')
+  if (label.startsWith('Cucu ')) return label.replace('Cucu ', 'Cucumu ')
+  if (label.startsWith('Cicit ')) return label.replace('Cicit ', 'Cicitmu ')
+  if (label.startsWith('Piut ')) return label.replace('Piut ', 'Piutmu ')
+  if (label.startsWith('Kakak ')) return label.replace('Kakak ', 'Kakakmu ')
+  if (label.startsWith('Adik ')) return label.replace('Adik ', 'Adikmu ')
+  if (label.startsWith('Saudara ')) return label.replace('Saudara ', 'Saudaramu ')
+  if (label.startsWith('Keponakan ')) return label.replace('Keponakan ', 'Keponakanmu ')
+  if (label.startsWith('Sepupu ')) return label.replace('Sepupu ', 'Sepupumu ')
+  if (label.startsWith('Menantu ')) return label.replace('Menantu ', 'Menantumu ')
+  if (label.startsWith('Ipar ')) return label.replace('Ipar ', 'Iparmu ')
+  if (label.startsWith('Besan ')) return label.replace('Besan ', 'Besanmu ')
+  if (label.startsWith('Buyut ')) return label.replace('Buyut ', 'Buyutmu ')
+  if (label.startsWith('Canggah ')) return label.replace('Canggah ', 'Canggahmu ')
+  if (label.includes('sepupu')) return label.replace('sepupu', 'sepupumu')
   
   return label
 }

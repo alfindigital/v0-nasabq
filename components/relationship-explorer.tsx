@@ -228,6 +228,23 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
+    // Besan = child's spouse's parents
+    const besans: Member[] = []
+    childSpouses.forEach(cs => {
+      getParents(cs.id).forEach(p => {
+        if (!besans.some(b => b.id === p.id)) besans.push(p)
+      })
+    })
+    if (besans.length > 0) {
+      categories.push({
+        label: 'Besan',
+        members: besans.map(m => ({ 
+          member: m, 
+          relation: m.gender === 'M' ? 'Besan laki-laki' : 'Besan perempuan' 
+        }))
+      })
+    }
+
     return categories
   }, [mode, self, getParents, getChildren, getSpouses, getSiblings])
 
