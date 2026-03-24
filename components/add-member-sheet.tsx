@@ -253,26 +253,32 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 placeholder="Cari anggota..."
                 className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
-              {existingMembers.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => handleSelectExisting(m.id)}
-                  className="w-full p-3 text-left bg-muted rounded-lg hover:bg-primary/10 transition-colors flex items-center gap-3"
-                >
-                  <User className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium">{m.nickname || m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.name}</p>
-                  </div>
-                </button>
-              ))}
+              
+              {/* Create New Member Button - Right after search */}
               <button
                 onClick={() => setShowNewForm(true)}
                 className="w-full p-3 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
-                Atau Tambah Anggota Baru
+                Buat Anggota Baru
               </button>
+
+              {/* Member List */}
+              <div className="border-t border-border pt-2">
+                {existingMembers.map(m => (
+                  <button
+                    key={m.id}
+                    onClick={() => handleSelectExisting(m.id)}
+                    className="w-full p-3 text-left bg-muted rounded-lg hover:bg-primary/10 transition-colors flex items-center gap-3 mb-2"
+                  >
+                    <User className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium">{m.nickname || m.name}</p>
+                      <p className="text-xs text-muted-foreground">{m.name}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="p-4 space-y-4">
