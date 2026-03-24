@@ -18,13 +18,13 @@ const poppins = Poppins({
 })
 
 export const metadata: Metadata = {
-  title: 'Nasab - Kenali Akar Keluargamu',
+  title: 'NasabQ - Kenali Akar Keluargamu',
   description: 'Aplikasi silsilah keluarga untuk mengenal dan menyimpan sejarah keluargamu',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
-    title: 'Nasab',
+    title: 'NasabQ',
   },
 }
 
