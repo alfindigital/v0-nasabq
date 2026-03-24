@@ -30,31 +30,47 @@ export function TreeNode({
   onToggleExpand
 }: TreeNodeProps) {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
-  const isLongPress = useRef(false)
+  const touchMoved = useRef(false)
 
-  const handleStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
-    isLongPress.current = false
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchMoved.current = false
     longPressTimer.current = setTimeout(() => {
-      isLongPress.current = true
-      onLongPress(e)
+      if (!touchMoved.current) {
+        onLongPress(e)
+      }
     }, 500)
   }
 
-  const handleEnd = () => {
+  const handleTouchMove = () => {
+    touchMoved.current = true
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current)
       longPressTimer.current = null
     }
-    if (!isLongPress.current) {
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    // If not moved and timer was cleared (short tap), trigger tap
+    if (!touchMoved.current) {
+      e.preventDefault() // Prevent click event from also firing
       onTap()
     }
   }
 
-  const handleCancel = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
+  const handleClick = (e: React.MouseEvent) => {
+    // Only handle click for non-touch devices (mouse)
+    if (e.detail === 1) {
+      onTap()
     }
+  }
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    onLongPress(e)
   }
 
   const genderBorderColor = member.gender === 'M' ? 'border-l-primary' : 'border-l-female-accent'
@@ -75,12 +91,11 @@ export function TreeNode({
           ${member.isDeceased ? 'opacity-60' : ''}
           ${isNew ? 'animate-pulse ring-2 ring-primary' : ''}
         `}
-        onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
-        onMouseUp={handleEnd}
-        onMouseLeave={handleCancel}
-        onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY, e)}
-        onTouchEnd={handleEnd}
-        onTouchCancel={handleCancel}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {/* Mahram indicator light */}
         {showMahramIndicator && (
