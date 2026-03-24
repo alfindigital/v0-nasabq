@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { X, Download, Upload, Trash2, Info, User, Type, Heart } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
+import { ConfirmDialog } from './confirm-dialog'
 import type { FontSize } from '@/lib/types'
 
 interface MenuDrawerProps {
@@ -15,6 +16,7 @@ interface MenuDrawerProps {
 export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerProps) {
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { members, settings, exportData, importData, clearAllData, setFontSize } = useNasabStore()
@@ -91,16 +93,20 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
   }
 
   const handleClearAll = () => {
-    if (confirm('Hapus semua data? Tindakan ini tidak dapat dibatalkan.')) {
-      clearAllData()
-      showToast('Semua data dihapus')
-      onClose()
-    }
+    setShowDeleteConfirm(true)
+  }
+
+  const confirmClearAll = () => {
+    clearAllData()
+    showToast('Semua data dihapus')
+    setShowDeleteConfirm(false)
+    onClose()
   }
 
   if (!open) return null
 
   return (
+    <>
     <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div 
@@ -267,5 +273,17 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
         </div>
       </div>
     </div>
+
+    <ConfirmDialog
+      open={showDeleteConfirm}
+      title="Hapus Semua Data"
+      message="Semua data silsilah keluarga akan dihapus. Tindakan ini tidak dapat dibatalkan."
+      confirmLabel="Hapus"
+      cancelLabel="Batal"
+      variant="danger"
+      onConfirm={confirmClearAll}
+      onCancel={() => setShowDeleteConfirm(false)}
+    />
+    </>
   )
 }

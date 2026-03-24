@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, User, MapPin, FileText, Pencil, Trash2, Plus, ChevronRight, UserPlus } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
+import { ConfirmDialog } from './confirm-dialog'
 import type { Member, Gender } from '@/lib/types'
 
 interface MemberDetailSheetProps {
@@ -24,6 +25,7 @@ export function MemberDetailSheet({
 }: MemberDetailSheetProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<Member>>({})
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'member' | 'relationship'; targetId?: number; targetName?: string } | null>(null)
   
   const { 
     members, 
@@ -130,19 +132,24 @@ export function MemberDetailSheet({
       showToast('Tidak bisa menghapus dirimu sendiri')
       return
     }
-    
-    if (confirm(`Hapus ${member.name}? Semua hubungan dengan anggota ini juga akan dihapus.`)) {
+    setDeleteConfirm({ type: 'member' })
+  }
+
+  const confirmDelete = () => {
+    if (deleteConfirm?.type === 'member') {
       deleteMember(member.id)
       showToast(`${member.name} dihapus`)
+      setDeleteConfirm(null)
       onClose()
+    } else if (deleteConfirm?.type === 'relationship' && deleteConfirm.targetId) {
+      removeRelationship(member.id, deleteConfirm.targetId)
+      showToast('Hubungan dihapus')
+      setDeleteConfirm(null)
     }
   }
 
   const handleRemoveRelationship = (targetId: number, targetName: string) => {
-    if (confirm(`Hapus hubungan dengan ${targetName}?`)) {
-      removeRelationship(member.id, targetId)
-      showToast('Hubungan dihapus')
-    }
+    setDeleteConfirm({ type: 'relationship', targetId, targetName })
   }
 
   const RelatedMemberRow = ({ 
@@ -557,6 +564,20 @@ export function MemberDetailSheet({
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={deleteConfirm?.type === 'member' ? 'Hapus Anggota' : 'Hapus Hubungan'}
+        message={deleteConfirm?.type === 'member' 
+          ? `Hapus ${member.name}? Semua hubungan dengan anggota ini juga akan dihapus.`
+          : `Hapus hubungan dengan ${deleteConfirm?.targetName}?`
+        }
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }
