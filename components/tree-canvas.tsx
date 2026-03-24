@@ -17,7 +17,6 @@ interface PositionedNode {
   x: number
   y: number
   gen: number
-  familyId: number // Which family tree this node belongs to
 }
 
 interface Connection {
@@ -30,10 +29,9 @@ interface Connection {
 
 const NODE_WIDTH = 140
 const NODE_HEIGHT = 50
-const H_GAP = 30
+const H_GAP = 40
 const V_GAP = 100
-const SPOUSE_GAP = 8
-const FAMILY_GAP = 80
+const SPOUSE_GAP = 10
 
 export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
@@ -49,197 +47,264 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   const self = members.find(m => m.isSelf)
 
   /**
-   * Build the tree layout with proper hierarchy:
-   * - Parents are ABOVE children (lower Y)
-   * - Spouses are HORIZONTAL (same Y, adjacent X)
-   * - Only blood relatives and their spouses are connected
-   * - In-laws (spouse's family) are NOT connected to your parents
+   * Build the tree layout with CORRECT hierarchy:
+   * - ALL ancestors at TOP (grandparents, parents, in-laws' parents)
+   * - Current generation in MIDDLE
+   * - Descendants at BOTTOM
+   * 
+   * The key insight: generation is determined by DISTANCE from root ancestors,
+   * not by traversal order. We need to find the oldest generation first.
    */
   const { positions, connections } = useMemo(() => {
-    if (!self) return { positions: [], connections: [] }
+    if (!self || members.length === 0) return { positions: [], connections: [] }
     
     const nodePositions: PositionedNode[] = []
     const lines: Connection[] = []
     
-    // Track which members have been positioned
-    const positioned = new Map<number, PositionedNode>()
+    // Step 1: Build adjacency for parent-child relationships only
+    const parentOf = new Map<number, Set<number>>() // parentOf.get(childId) = set of parent IDs
+    const childOf = new Map<number, Set<number>>() // childOf.get(parentId) = set of child IDs
+    const spouseOf = new Map<number, Set<number>>() // spouseOf.get(id) = set of spouse IDs
     
-    // Assign generations relative to self (self = 0)
-    // Parents = -1, Grandparents = -2, Children = +1, etc.
+    members.forEach(m => {
+      parentOf.set(m.id, new Set())
+      childOf.set(m.id, new Set())
+      spouseOf.set(m.id, new Set())
+    })
+    
+    members.forEach(m => {
+      m.relationships.forEach(r => {
+        if (r.type === 'parent') {
+          parentOf.get(m.id)?.add(r.targetId)
+          childOf.get(r.targetId)?.add(m.id)
+        } else if (r.type === 'child') {
+          childOf.get(m.id)?.add(r.targetId)
+          parentOf.get(r.targetId)?.add(m.id)
+        } else if (r.type === 'spouse') {
+          spouseOf.get(m.id)?.add(r.targetId)
+          spouseOf.get(r.targetId)?.add(m.id)
+        }
+      })
+    })
+    
+    // Step 2: Find all root ancestors (people with no parents)
+    const roots = members.filter(m => (parentOf.get(m.id)?.size || 0) === 0)
+    
+    // Step 3: Assign generations using BFS from roots (oldest = 0, increasing downward)
     const memberGen = new Map<number, number>()
-    const memberFamily = new Map<number, number>() // Track which "family tree" each person belongs to
     
-    // Build generations from self outward
-    const assignGenerations = (id: number, gen: number, familyId: number, visited: Set<number>) => {
-      if (visited.has(id)) return
-      visited.add(id)
+    // BFS from all roots simultaneously
+    const queue: { id: number; gen: number }[] = []
+    roots.forEach(r => queue.push({ id: r.id, gen: 0 }))
+    
+    while (queue.length > 0) {
+      const { id, gen } = queue.shift()!
       
-      // Only update if not set or this path gives a better (closer to self) generation
-      if (!memberGen.has(id)) {
-        memberGen.set(id, gen)
-        memberFamily.set(id, familyId)
-      }
+      // Skip if already assigned (take the minimum/oldest generation)
+      if (memberGen.has(id) && memberGen.get(id)! <= gen) continue
+      memberGen.set(id, gen)
       
-      // Spouses share the same generation
-      getSpouses(id).forEach(spouse => {
-        if (!memberGen.has(spouse.id)) {
-          memberGen.set(spouse.id, gen)
-          memberFamily.set(spouse.id, familyId)
-        }
-      })
-      
-      // Parents are one generation UP (negative)
-      getParents(id).forEach(parent => {
-        if (!visited.has(parent.id)) {
-          assignGenerations(parent.id, gen - 1, familyId, visited)
-        }
-      })
-      
-      // Children are one generation DOWN (positive)
-      getChildren(id).forEach(child => {
-        if (!visited.has(child.id)) {
-          assignGenerations(child.id, gen + 1, familyId, visited)
+      // Process children (they are one generation below)
+      const children = childOf.get(id) || new Set()
+      children.forEach(childId => {
+        if (!memberGen.has(childId) || memberGen.get(childId)! > gen + 1) {
+          queue.push({ id: childId, gen: gen + 1 })
         }
       })
     }
     
-    // Start from self
-    assignGenerations(self.id, 0, 0, new Set())
-    
-    // Also assign generations for any disconnected members (spouse's family)
+    // Step 4: Handle disconnected members (assign based on spouse if possible)
     members.forEach(m => {
       if (!memberGen.has(m.id)) {
-        // This is a disconnected family tree (e.g., spouse's parents)
-        // Try to find connection through spouses
-        const spouses = getSpouses(m.id)
-        let found = false
-        for (const spouse of spouses) {
-          if (memberGen.has(spouse.id)) {
-            assignGenerations(m.id, memberGen.get(spouse.id)!, memberFamily.get(spouse.id)!, new Set())
-            found = true
+        // Try to get generation from spouse
+        const spouses = spouseOf.get(m.id) || new Set()
+        for (const spouseId of spouses) {
+          if (memberGen.has(spouseId)) {
+            memberGen.set(m.id, memberGen.get(spouseId)!)
             break
           }
         }
-        if (!found) {
-          // Completely disconnected, give them their own family tree
-          assignGenerations(m.id, 0, m.id, new Set())
-        }
-      }
-    })
-    
-    // Group by generation
-    const genGroups = new Map<number, number[]>()
-    memberGen.forEach((gen, id) => {
-      if (!genGroups.has(gen)) genGroups.set(gen, [])
-      genGroups.get(gen)!.push(id)
-    })
-    
-    // Sort generations (negative at top, positive at bottom)
-    const sortedGens = Array.from(genGroups.keys()).sort((a, b) => a - b)
-    const minGen = Math.min(...sortedGens)
-    
-    // Check if node should be hidden due to collapsed ancestor
-    const isHiddenByCollapse = (id: number, currentGen: number): boolean => {
-      // Check all parents
-      const parents = getParents(id)
-      for (const parent of parents) {
-        const parentGen = memberGen.get(parent.id)
-        if (parentGen !== undefined && parentGen < currentGen) {
-          // This parent is above us
-          if (collapsedNodes.has(parent.id)) return true
-          // Also check if parent's spouse is collapsed
-          for (const ps of getSpouses(parent.id)) {
-            if (collapsedNodes.has(ps.id)) return true
+        // If still not assigned, check if any children have generation
+        const children = childOf.get(m.id) || new Set()
+        for (const childId of children) {
+          if (memberGen.has(childId)) {
+            memberGen.set(m.id, memberGen.get(childId)! - 1)
+            break
           }
         }
-      }
-      return false
-    }
-    
-    // Position nodes generation by generation
-    sortedGens.forEach(gen => {
-      const memberIds = genGroups.get(gen) || []
-      const genY = (gen - minGen) * (NODE_HEIGHT + V_GAP)
-      
-      // Sort members: self first, then by family ID, then alphabetically
-      const sortedIds = [...memberIds].sort((a, b) => {
-        if (a === self.id) return -1
-        if (b === self.id) return 1
-        const famA = memberFamily.get(a) || 0
-        const famB = memberFamily.get(b) || 0
-        if (famA !== famB) return famA - famB
-        const mA = members.find(m => m.id === a)
-        const mB = members.find(m => m.id === b)
-        return (mA?.name || '').localeCompare(mB?.name || '')
-      })
-      
-      // Group couples together
-      const processed = new Set<number>()
-      const groups: number[][] = []
-      
-      sortedIds.forEach(id => {
-        if (processed.has(id)) return
-        if (isHiddenByCollapse(id, gen)) {
-          processed.add(id)
-          return
+        // Default to 0 if completely disconnected
+        if (!memberGen.has(m.id)) {
+          memberGen.set(m.id, 0)
         }
-        
-        const group = [id]
-        processed.add(id)
-        
-        // Add spouses to the same group
-        getSpouses(id).forEach(spouse => {
-          if (!processed.has(spouse.id) && memberGen.get(spouse.id) === gen) {
-            if (!isHiddenByCollapse(spouse.id, gen)) {
-              group.push(spouse.id)
-              processed.add(spouse.id)
+      }
+    })
+    
+    // Step 5: Ensure spouses are at the same generation (take the MINIMUM)
+    let changed = true
+    while (changed) {
+      changed = false
+      members.forEach(m => {
+        const spouses = spouseOf.get(m.id) || new Set()
+        spouses.forEach(spouseId => {
+          const myGen = memberGen.get(m.id)!
+          const spouseGen = memberGen.get(spouseId)!
+          if (myGen !== spouseGen) {
+            const minGen = Math.min(myGen, spouseGen)
+            if (memberGen.get(m.id) !== minGen) {
+              memberGen.set(m.id, minGen)
+              changed = true
+            }
+            if (memberGen.get(spouseId) !== minGen) {
+              memberGen.set(spouseId, minGen)
+              changed = true
             }
           }
         })
+      })
+    }
+    
+    // Step 6: Verify parent-child relationship (parent must be above child)
+    // If not, adjust the parent upward
+    changed = true
+    while (changed) {
+      changed = false
+      members.forEach(m => {
+        const parents = parentOf.get(m.id) || new Set()
+        const myGen = memberGen.get(m.id)!
+        parents.forEach(parentId => {
+          const parentGen = memberGen.get(parentId)!
+          if (parentGen >= myGen) {
+            // Parent should be ABOVE (lower gen number)
+            memberGen.set(parentId, myGen - 1)
+            // Also adjust parent's spouses
+            const parentSpouses = spouseOf.get(parentId) || new Set()
+            parentSpouses.forEach(psId => {
+              memberGen.set(psId, myGen - 1)
+            })
+            changed = true
+          }
+        })
+      })
+    }
+    
+    // Step 7: Normalize generations (make minimum = 0)
+    const minGen = Math.min(...Array.from(memberGen.values()))
+    if (minGen !== 0) {
+      members.forEach(m => {
+        memberGen.set(m.id, memberGen.get(m.id)! - minGen)
+      })
+    }
+    
+    // Step 8: Determine visibility (collapse logic)
+    const isVisible = new Map<number, boolean>()
+    
+    const checkVisibility = (id: number): boolean => {
+      // Check if any ancestor is collapsed
+      const parents = parentOf.get(id) || new Set()
+      for (const parentId of parents) {
+        if (collapsedNodes.has(parentId)) return false
+        // Check parent's spouses too
+        const parentSpouses = spouseOf.get(parentId) || new Set()
+        for (const psId of parentSpouses) {
+          if (collapsedNodes.has(psId)) return false
+        }
+        // Recursively check if parent is visible
+        if (!checkVisibility(parentId)) return false
+      }
+      return true
+    }
+    
+    members.forEach(m => {
+      isVisible.set(m.id, checkVisibility(m.id))
+    })
+    
+    // Step 9: Group by generation and position
+    const genGroups = new Map<number, number[]>()
+    members.forEach(m => {
+      if (!isVisible.get(m.id)) return
+      const gen = memberGen.get(m.id)!
+      if (!genGroups.has(gen)) genGroups.set(gen, [])
+      genGroups.get(gen)!.push(m.id)
+    })
+    
+    const sortedGens = Array.from(genGroups.keys()).sort((a, b) => a - b)
+    const positioned = new Map<number, PositionedNode>()
+    
+    // Position each generation
+    sortedGens.forEach(gen => {
+      const memberIds = genGroups.get(gen) || []
+      const genY = gen * (NODE_HEIGHT + V_GAP)
+      
+      // Group couples together
+      const processed = new Set<number>()
+      const couples: number[][] = []
+      
+      // Sort members by their connection to already-positioned parents
+      const sortedIds = [...memberIds].sort((a, b) => {
+        // Self comes first
+        if (a === self.id) return -1
+        if (b === self.id) return 1
         
-        groups.push(group)
+        // Sort by parent position if available
+        const parentsA = Array.from(parentOf.get(a) || [])
+        const parentsB = Array.from(parentOf.get(b) || [])
+        const parentPosA = parentsA.map(p => positioned.get(p)?.x || 0)
+        const parentPosB = parentsB.map(p => positioned.get(p)?.x || 0)
+        const avgA = parentPosA.length > 0 ? parentPosA.reduce((s, x) => s + x, 0) / parentPosA.length : 0
+        const avgB = parentPosB.length > 0 ? parentPosB.reduce((s, x) => s + x, 0) / parentPosB.length : 0
+        return avgA - avgB
       })
       
-      // Calculate total width needed
+      sortedIds.forEach(id => {
+        if (processed.has(id)) return
+        
+        const couple = [id]
+        processed.add(id)
+        
+        // Add spouses
+        const spouses = spouseOf.get(id) || new Set()
+        spouses.forEach(spouseId => {
+          if (!processed.has(spouseId) && memberGen.get(spouseId) === gen && isVisible.get(spouseId)) {
+            couple.push(spouseId)
+            processed.add(spouseId)
+          }
+        })
+        
+        couples.push(couple)
+      })
+      
+      // Calculate total width
       let totalWidth = 0
-      groups.forEach((group, i) => {
-        totalWidth += group.length * NODE_WIDTH + (group.length - 1) * SPOUSE_GAP
-        if (i < groups.length - 1) totalWidth += H_GAP
+      couples.forEach((couple, i) => {
+        totalWidth += couple.length * NODE_WIDTH + (couple.length - 1) * SPOUSE_GAP
+        if (i < couples.length - 1) totalWidth += H_GAP
       })
       
-      // Position groups centered
+      // Position centered
       let currentX = -totalWidth / 2
       
-      groups.forEach((group) => {
-        group.forEach((id, idx) => {
-          const pos: PositionedNode = {
-            id,
-            x: currentX,
-            y: genY,
-            gen,
-            familyId: memberFamily.get(id) || 0
-          }
+      couples.forEach(couple => {
+        couple.forEach((id, idx) => {
+          const pos: PositionedNode = { id, x: currentX, y: genY, gen }
           nodePositions.push(pos)
           positioned.set(id, pos)
-          currentX += NODE_WIDTH + (idx < group.length - 1 ? SPOUSE_GAP : 0)
+          currentX += NODE_WIDTH + (idx < couple.length - 1 ? SPOUSE_GAP : 0)
         })
         currentX += H_GAP
       })
     })
     
-    // Build connections
+    // Step 10: Draw connections
     const drawnConnections = new Set<string>()
     
     nodePositions.forEach(pos => {
-      const member = members.find(m => m.id === pos.id)
-      if (!member) return
-      
-      // Draw spouse connections (horizontal)
-      getSpouses(pos.id).forEach(spouse => {
-        const spousePos = positioned.get(spouse.id)
+      // Spouse connections (horizontal)
+      const spouses = spouseOf.get(pos.id) || new Set()
+      spouses.forEach(spouseId => {
+        const spousePos = positioned.get(spouseId)
         if (!spousePos || spousePos.y !== pos.y) return
         
-        const key = [pos.id, spouse.id].sort().join('-spouse-')
+        const key = [pos.id, spouseId].sort().join('-s-')
         if (drawnConnections.has(key)) return
         drawnConnections.add(key)
         
@@ -250,89 +315,81 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
         lines.push({ x1: leftX, y1: y, x2: rightX, y2: y, isSpouse: true })
       })
       
-      // Skip parent-child connections if this node is collapsed
+      // Skip children connections if collapsed
       if (collapsedNodes.has(pos.id)) return
       
-      // Draw parent-to-children connections
-      const children = getChildren(pos.id)
-      const visibleChildren = children.filter(c => positioned.has(c.id))
+      // Parent-to-children connections
+      const children = childOf.get(pos.id) || new Set()
+      const visibleChildIds = Array.from(children).filter(cid => positioned.has(cid))
       
-      if (visibleChildren.length === 0) return
+      if (visibleChildIds.length === 0) return
       
-      // Get all people at this position who are parents of these children (couple)
-      const coupleAtPos = [pos.id]
-      getSpouses(pos.id).forEach(spouse => {
-        const sp = positioned.get(spouse.id)
+      // Find couple at this position
+      const coupleIds = [pos.id]
+      spouses.forEach(spouseId => {
+        const sp = positioned.get(spouseId)
         if (sp && sp.y === pos.y) {
-          // Check if spouse is also a parent of these children
-          const spouseChildren = getChildren(spouse.id)
-          if (spouseChildren.some(sc => visibleChildren.some(vc => vc.id === sc.id))) {
-            coupleAtPos.push(spouse.id)
+          // Check if spouse is also parent of these children
+          const spouseChildren = childOf.get(spouseId) || new Set()
+          if (visibleChildIds.some(cid => spouseChildren.has(cid))) {
+            coupleIds.push(spouseId)
           }
         }
       })
       
-      // Calculate parent connection point (center of couple)
-      const couplePositions = coupleAtPos.map(id => positioned.get(id)!).filter(Boolean)
+      const connKey = `p-${coupleIds.sort().join(',')}-c-${visibleChildIds.sort().join(',')}`
+      if (drawnConnections.has(connKey)) return
+      drawnConnections.add(connKey)
+      
+      // Parent center point
+      const couplePositions = coupleIds.map(id => positioned.get(id)!).filter(Boolean)
       const coupleMinX = Math.min(...couplePositions.map(p => p.x))
       const coupleMaxX = Math.max(...couplePositions.map(p => p.x)) + NODE_WIDTH
       const parentCenterX = (coupleMinX + coupleMaxX) / 2
       const parentBottomY = pos.y + NODE_HEIGHT
       
-      // Get child positions
-      const childPositions = visibleChildren
-        .map(c => positioned.get(c.id))
+      // Child positions
+      const childPositions = visibleChildIds
+        .map(cid => positioned.get(cid))
         .filter((p): p is PositionedNode => p !== undefined)
         .sort((a, b) => a.x - b.x)
       
       if (childPositions.length === 0) return
       
-      // Connection key to avoid duplicates
-      const connectionKey = `parent-${coupleAtPos.sort().join(',')}-children-${visibleChildren.map(c => c.id).sort().join(',')}`
-      if (drawnConnections.has(connectionKey)) return
-      drawnConnections.add(connectionKey)
-      
       const midY = parentBottomY + V_GAP / 2
       
-      // Vertical line from parent to midpoint
+      // Vertical from parent to mid
       lines.push({ x1: parentCenterX, y1: parentBottomY, x2: parentCenterX, y2: midY })
       
       if (childPositions.length === 1) {
-        // Single child - straight vertical line
         const childCenterX = childPositions[0].x + NODE_WIDTH / 2
-        const childTopY = childPositions[0].y
-        
-        // Horizontal line to align with child if needed
         if (Math.abs(childCenterX - parentCenterX) > 1) {
           lines.push({ x1: parentCenterX, y1: midY, x2: childCenterX, y2: midY })
         }
-        // Vertical line down to child
-        lines.push({ x1: childCenterX, y1: midY, x2: childCenterX, y2: childTopY })
+        lines.push({ x1: childCenterX, y1: midY, x2: childCenterX, y2: childPositions[0].y })
       } else {
-        // Multiple children - horizontal bar + verticals
-        const leftChildCenterX = childPositions[0].x + NODE_WIDTH / 2
-        const rightChildCenterX = childPositions[childPositions.length - 1].x + NODE_WIDTH / 2
+        const leftX = childPositions[0].x + NODE_WIDTH / 2
+        const rightX = childPositions[childPositions.length - 1].x + NODE_WIDTH / 2
         
-        // Horizontal bar across all children
-        lines.push({ x1: leftChildCenterX, y1: midY, x2: rightChildCenterX, y2: midY })
+        // Horizontal bar
+        lines.push({ x1: leftX, y1: midY, x2: rightX, y2: midY })
         
-        // Connect parent drop-line to the bar
-        if (parentCenterX < leftChildCenterX) {
-          lines.push({ x1: parentCenterX, y1: midY, x2: leftChildCenterX, y2: midY })
-        } else if (parentCenterX > rightChildCenterX) {
-          lines.push({ x1: parentCenterX, y1: midY, x2: rightChildCenterX, y2: midY })
+        // Connect parent to bar if needed
+        if (parentCenterX < leftX) {
+          lines.push({ x1: parentCenterX, y1: midY, x2: leftX, y2: midY })
+        } else if (parentCenterX > rightX) {
+          lines.push({ x1: rightX, y1: midY, x2: parentCenterX, y2: midY })
         }
         
-        // Vertical lines down to each child
+        // Verticals to each child
         childPositions.forEach(cp => {
-          const childCenterX = cp.x + NODE_WIDTH / 2
-          lines.push({ x1: childCenterX, y1: midY, x2: childCenterX, y2: cp.y })
+          lines.push({ x1: cp.x + NODE_WIDTH / 2, y1: midY, x2: cp.x + NODE_WIDTH / 2, y2: cp.y })
         })
       }
     })
     
     return { positions: nodePositions, connections: lines }
-  }, [members, self, getParents, getChildren, getSpouses, collapsedNodes])
+  }, [members, self, collapsedNodes])
 
   // Fit to screen
   const handleFitToScreen = useCallback(() => {
@@ -344,24 +401,21 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     const minY = Math.min(...positions.map(p => p.y))
     const maxY = Math.max(...positions.map(p => p.y)) + NODE_HEIGHT
     
-    const treeWidth = maxX - minX + 80
-    const treeHeight = maxY - minY + 80
+    const treeWidth = maxX - minX + 100
+    const treeHeight = maxY - minY + 100
     
     const scaleX = rect.width / treeWidth
     const scaleY = rect.height / treeHeight
     const scale = Math.min(scaleX, scaleY, 1.2)
     
-    const centerX = (minX + maxX) / 2
-    const centerY = (minY + maxY) / 2
-    
     setTransform({
-      x: rect.width / 2 - centerX * scale,
-      y: rect.height / 2 - centerY * scale,
+      x: rect.width / 2 - ((minX + maxX) / 2) * scale,
+      y: rect.height / 2 - ((minY + maxY) / 2) * scale,
       scale: Math.max(0.4, Math.min(scale, 1.2))
     })
   }, [positions])
 
-  // Initialize view
+  // Initialize
   useEffect(() => {
     if (self && !initialized && positions.length > 0) {
       setTimeout(handleFitToScreen, 100)
@@ -369,14 +423,11 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     }
   }, [self, initialized, positions.length, handleFitToScreen])
 
-  // Re-fit when members change
   useEffect(() => {
-    if (initialized) {
-      handleFitToScreen()
-    }
+    if (initialized) handleFitToScreen()
   }, [members.length])
 
-  // Pan handlers (mouse)
+  // Drag handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest('.tree-node, .quick-action, .zoom-controls')) return
     setIsDragging(true)
@@ -386,14 +437,15 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging) return
-    const dx = e.clientX - dragStart.x
-    const dy = e.clientY - dragStart.y
-    setTransform(t => ({ ...t, x: dragTransformStart.x + dx, y: dragTransformStart.y + dy }))
+    setTransform(t => ({
+      ...t,
+      x: dragTransformStart.x + (e.clientX - dragStart.x),
+      y: dragTransformStart.y + (e.clientY - dragStart.y)
+    }))
   }
 
   const handleMouseUp = () => setIsDragging(false)
 
-  // Touch handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     if ((e.target as HTMLElement).closest('.tree-node, .quick-action, .zoom-controls')) return
     if (e.touches.length === 1) {
@@ -405,14 +457,15 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (!isDragging || e.touches.length !== 1) return
-    const dx = e.touches[0].clientX - dragStart.x
-    const dy = e.touches[0].clientY - dragStart.y
-    setTransform(t => ({ ...t, x: dragTransformStart.x + dx, y: dragTransformStart.y + dy }))
+    setTransform(t => ({
+      ...t,
+      x: dragTransformStart.x + (e.touches[0].clientX - dragStart.x),
+      y: dragTransformStart.y + (e.touches[0].clientY - dragStart.y)
+    }))
   }
 
   const handleTouchEnd = () => setIsDragging(false)
 
-  // Zoom
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? -0.1 : 0.1
@@ -422,15 +475,11 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   const handleZoomIn = () => setTransform(t => ({ ...t, scale: Math.min(2, t.scale + 0.2) }))
   const handleZoomOut = () => setTransform(t => ({ ...t, scale: Math.max(0.3, t.scale - 0.2) }))
 
-  // Collapse/expand
   const toggleCollapse = (id: number) => {
     setCollapsedNodes(prev => {
       const next = new Set(prev)
-      if (next.has(id)) {
-        next.delete(id)
-      } else {
-        next.add(id)
-      }
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -444,7 +493,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     }
   }
 
-  // Node interactions
   const handleNodeTap = (member: Member) => onViewMember(member)
 
   const handleNodeLongPress = (member: Member, e: React.MouseEvent | React.TouchEvent) => {
@@ -457,15 +505,11 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
 
   const handleQuickAction = (action: 'spouse' | 'parent' | 'child' | 'edit') => {
     if (!quickAction) return
-    if (action === 'edit') {
-      onViewMember(quickAction.member)
-    } else {
-      onAddRelative({ targetId: quickAction.member.id, relationshipType: action })
-    }
+    if (action === 'edit') onViewMember(quickAction.member)
+    else onAddRelative({ targetId: quickAction.member.id, relationshipType: action })
     setQuickAction(null)
   }
 
-  // Empty state (only self)
   if (members.length === 1 && self) {
     return (
       <div className="h-full bg-canvas canvas-pattern flex flex-col items-center justify-center p-6 text-center">
@@ -513,7 +557,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           transition: isDragging ? 'none' : 'transform 0.15s ease-out'
         }}
       >
-        {/* SVG for connection lines */}
         <svg
           className="absolute pointer-events-none"
           style={{ left: -2000, top: -1000, width: 5000, height: 3000 }}
@@ -527,14 +570,13 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
                 x2={line.x2}
                 y2={line.y2}
                 stroke="var(--primary)"
-                strokeWidth={line.isSpouse ? 2 : 2}
-                strokeOpacity={line.isSpouse ? 0.6 : 0.35}
+                strokeWidth={2}
+                strokeOpacity={line.isSpouse ? 0.6 : 0.4}
               />
             ))}
-            {/* Marriage indicator dots */}
             {connections.filter(l => l.isSpouse).map((line, i) => (
               <circle
-                key={`marriage-${i}`}
+                key={`m-${i}`}
                 cx={(line.x1 + line.x2) / 2}
                 cy={line.y1}
                 r={4}
@@ -545,7 +587,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           </g>
         </svg>
 
-        {/* Nodes */}
         {positions.map(pos => {
           const member = members.find(m => m.id === pos.id)
           if (!member) return null
@@ -578,9 +619,9 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       {quickAction && (
         <div className="quick-action">
           <QuickActionPopup
+            member={quickAction.member}
             x={quickAction.x}
             y={quickAction.y}
-            member={quickAction.member}
             onAction={handleQuickAction}
             onClose={() => setQuickAction(null)}
           />
