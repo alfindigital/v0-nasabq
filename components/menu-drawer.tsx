@@ -159,8 +159,8 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
                 {darkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
                 <span className="text-sm font-medium">{darkMode ? 'Mode Gelap' : 'Mode Terang'}</span>
               </div>
-              <div className={`w-10 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-border'}`}>
-                <div className={`w-5 h-5 mt-0.5 rounded-full bg-card shadow transition-transform ${darkMode ? 'translate-x-4.5 ml-0.5' : 'translate-x-0.5'}`} />
+              <div className={`relative w-10 h-6 rounded-full transition-colors ${darkMode ? 'bg-primary' : 'bg-border'}`}>
+                <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-card shadow transition-all ${darkMode ? 'left-4' : 'left-0.5'}`} />
               </div>
             </button>
           </section>

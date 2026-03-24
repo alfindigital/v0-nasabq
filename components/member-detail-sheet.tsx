@@ -1,9 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, User, MapPin, Calendar, FileText, Pencil, Trash2, Plus, ChevronRight } from 'lucide-react'
+import { X, User, MapPin, FileText, Pencil, Trash2, Plus, ChevronRight, UserPlus } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
-import { getRelationshipLabel } from '@/lib/relationship'
 import type { Member, Gender } from '@/lib/types'
 
 interface MemberDetailSheetProps {
@@ -11,7 +10,7 @@ interface MemberDetailSheetProps {
   onClose: () => void
   member: Member | null
   onViewMember: (member: Member) => void
-  onAddRelative: (context: { targetId: number; relationshipType: 'child' | 'parent' | 'spouse' | 'sibling' }) => void
+  onAddRelative: (context: { targetId: number; relationshipType: 'child' | 'parent' | 'spouse' }) => void
   showToast: (message: string) => void
 }
 
@@ -46,7 +45,6 @@ export function MemberDetailSheet({
         nickname: member.nickname,
         gender: member.gender,
         birthYear: member.birthYear,
-        birthPlace: member.birthPlace,
         isDeceased: member.isDeceased,
         deathYear: member.deathYear,
         deathPlace: member.deathPlace,
@@ -62,7 +60,6 @@ export function MemberDetailSheet({
   const children = getChildren(member.id)
   const spouses = getSpouses(member.id)
   const siblings = getSiblings(member.id)
-  const self = members.find(m => m.isSelf)
 
   // Get extended family through relationships
   const getInLaws = () => {
@@ -117,7 +114,6 @@ export function MemberDetailSheet({
       nickname: editData.nickname?.trim() || null,
       gender: editData.gender,
       birthYear: editData.birthYear,
-      birthPlace: editData.birthPlace?.trim() || null,
       isDeceased: editData.isDeceased,
       deathYear: editData.deathYear,
       deathPlace: editData.deathPlace?.trim() || null,
@@ -166,8 +162,10 @@ export function MemberDetailSheet({
         }}
         className="flex-1 flex items-center gap-3 text-left hover:opacity-80 transition-opacity"
       >
-        <div className={`w-[26px] h-[26px] rounded-full bg-primary/10 flex items-center justify-center ${relatedMember.isDeceased ? 'grayscale opacity-70' : ''}`}>
-          <User className="w-3.5 h-3.5 text-primary" />
+        <div className={`w-[26px] h-[26px] rounded-full flex items-center justify-center ${
+          relatedMember.gender === 'M' ? 'bg-primary/15' : 'bg-female-accent/15'
+        } ${relatedMember.isDeceased ? 'grayscale opacity-70' : ''}`}>
+          <User className={`w-3.5 h-3.5 ${relatedMember.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
         </div>
         <div className="flex-1 min-w-0">
           <span className="text-sm font-medium truncate block">{relatedMember.name}</span>
@@ -191,7 +189,7 @@ export function MemberDetailSheet({
     type 
   }: { 
     label: string
-    type: 'child' | 'parent' | 'spouse' | 'sibling' 
+    type: 'child' | 'parent' | 'spouse' 
   }) => (
     <button
       onClick={() => {
@@ -270,25 +268,14 @@ export function MemberDetailSheet({
                   ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tahun Lahir</label>
-                  <input
-                    type="number"
-                    value={editData.birthYear || ''}
-                    onChange={(e) => setEditData(d => ({ ...d, birthYear: e.target.value ? parseInt(e.target.value) : null }))}
-                    className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tempat Lahir</label>
-                  <input
-                    type="text"
-                    value={editData.birthPlace || ''}
-                    onChange={(e) => setEditData(d => ({ ...d, birthPlace: e.target.value }))}
-                    className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tahun Lahir</label>
+                <input
+                  type="number"
+                  value={editData.birthYear || ''}
+                  onChange={(e) => setEditData(d => ({ ...d, birthYear: e.target.value ? parseInt(e.target.value) : null }))}
+                  className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
               </div>
               <div>
                 <button
@@ -329,7 +316,7 @@ export function MemberDetailSheet({
                 )}
               </div>
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Alamat</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Domisili</label>
                 <input
                   type="text"
                   value={editData.address || ''}
@@ -346,14 +333,59 @@ export function MemberDetailSheet({
                   className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 />
               </div>
+
+              {/* Add relationships section in edit mode */}
+              <div className="pt-4 border-t border-border">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Tambah Hubungan</h4>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false)
+                      onClose()
+                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'parent' }), 100)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Orang Tua
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false)
+                      onClose()
+                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'spouse' }), 100)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Pasangan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false)
+                      onClose()
+                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'child' }), 100)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Anak
+                  </button>
+                </div>
+              </div>
             </div>
           ) : (
             // View mode
             <div className="space-y-6">
               {/* Profile header */}
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 ${member.isDeceased ? 'grayscale opacity-70' : ''}`}>
-                  <User className="w-6 h-6 text-primary" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  member.gender === 'M' ? 'bg-primary/15' : 'bg-female-accent/15'
+                } ${member.isDeceased ? 'grayscale opacity-70' : ''}`}>
+                  <User className={`w-6 h-6 ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -375,7 +407,6 @@ export function MemberDetailSheet({
                   <p className="text-xs text-muted-foreground mt-1">
                     {member.gender === 'M' ? 'Laki-laki' : 'Perempuan'}
                     {member.birthYear && ` · Lahir ${member.birthYear}`}
-                    {member.birthPlace && ` di ${member.birthPlace}`}
                   </p>
                   {member.isDeceased && (member.deathYear || member.deathPlace) && (
                     <p className="text-xs text-muted-foreground">
@@ -419,12 +450,7 @@ export function MemberDetailSheet({
                     ))}
                     {parents.length < 2 && (
                       <div className="mt-1">
-                        {!parents.some(p => p.gender === 'M') && (
-                          <AddRelativeButton label="+ Tambah Ayah" type="parent" />
-                        )}
-                        {!parents.some(p => p.gender === 'F') && (
-                          <AddRelativeButton label="+ Tambah Ibu" type="parent" />
-                        )}
+                        <AddRelativeButton label="Tambah Orang Tua" type="parent" />
                       </div>
                     )}
                   </div>
@@ -442,7 +468,7 @@ export function MemberDetailSheet({
                     />
                   ))}
                   {spouses.length === 0 && (
-                    <AddRelativeButton label="+ Tambah Pasangan" type="spouse" />
+                    <AddRelativeButton label="Tambah Pasangan" type="spouse" />
                   )}
                 </div>
 
@@ -457,7 +483,7 @@ export function MemberDetailSheet({
                       canRemove
                     />
                   ))}
-                  <AddRelativeButton label="+ Tambah Anak" type="child" />
+                  <AddRelativeButton label="Tambah Anak" type="child" />
                 </div>
 
                 {/* Siblings */}
@@ -498,13 +524,14 @@ export function MemberDetailSheet({
             <>
               <button
                 onClick={() => setIsEditing(false)}
-                className="flex-1 h-11 text-sm font-medium border border-border rounded-lg hover:bg-muted transition-colors"
+                className="flex-1 h-11 text-sm font-medium bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
               >
                 Batal
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 h-11 text-sm font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover transition-colors"
+                disabled={!editData.name?.trim()}
+                className="flex-1 h-11 text-sm font-semibold bg-primary text-primary-foreground rounded-lg disabled:opacity-50 hover:bg-primary-hover transition-colors"
               >
                 Simpan
               </button>
@@ -513,7 +540,7 @@ export function MemberDetailSheet({
             <>
               <button
                 onClick={() => setIsEditing(true)}
-                className="flex-1 h-11 text-sm font-medium border border-border rounded-lg hover:bg-muted transition-colors flex items-center justify-center gap-2"
+                className="flex-1 h-11 flex items-center justify-center gap-2 text-sm font-medium bg-muted text-foreground rounded-lg hover:bg-muted/80 transition-colors"
               >
                 <Pencil className="w-4 h-4" />
                 Edit
@@ -521,10 +548,9 @@ export function MemberDetailSheet({
               {!member.isSelf && (
                 <button
                   onClick={handleDelete}
-                  className="h-11 px-4 text-sm font-medium border border-destructive/30 text-destructive rounded-lg hover:bg-destructive/10 transition-colors flex items-center justify-center gap-2"
+                  className="h-11 px-4 flex items-center justify-center gap-2 text-sm font-medium text-destructive bg-destructive/10 rounded-lg hover:bg-destructive/20 transition-colors"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Hapus
                 </button>
               )}
             </>

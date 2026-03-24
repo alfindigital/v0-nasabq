@@ -77,6 +77,8 @@ export function findPath(
 }
 
 // Decode path to relationship label
+// IMPORTANT: This function returns what TARGET is TO FROM
+// Example: pathToLabel for "self -> parent" returns what parent is to self = "Ayah/Ibu"
 export function pathToLabel(
   path: Direction[],
   targetGender: Gender,
@@ -92,18 +94,25 @@ export function pathToLabel(
     return target.birthYear < from.birthYear
   }
   
-  // Direct relationships
+  // Direct relationships (1 step)
+  // up = target is parent of from
   if (pathStr === 'up') return isMale ? 'Ayah' : 'Ibu'
+  // down = target is child of from  
   if (pathStr === 'down') return isMale ? 'Anak laki-laki' : 'Anak perempuan'
+  // lateral = target is spouse of from
   if (pathStr === 'lateral') return isMale ? 'Suami' : 'Istri'
   
-  // Grandparents/grandchildren
+  // Grandparents (2 ups) - target is grandparent of from
   if (pathStr === 'up,up') return isMale ? 'Kakek' : 'Nenek'
+  // Grandchildren (2 downs) - target is grandchild of from
   if (pathStr === 'down,down') return isMale ? 'Cucu laki-laki' : 'Cucu perempuan'
-  if (pathStr === 'up,up,up') return 'Buyut'
-  if (pathStr === 'down,down,down') return 'Cicit'
   
-  // Siblings (up then down to different person)
+  // Great grandparents/children
+  if (pathStr === 'up,up,up') return isMale ? 'Buyut (laki-laki)' : 'Buyut (perempuan)'
+  if (pathStr === 'down,down,down') return isMale ? 'Cicit laki-laki' : 'Cicit perempuan'
+  
+  // Siblings (up then down = same parents, different person)
+  // target is sibling of from
   if (pathStr === 'up,down') {
     const older = isOlder(targetMember, fromMember)
     if (older === true) return isMale ? 'Kakak laki-laki' : 'Kakak perempuan'
@@ -112,41 +121,43 @@ export function pathToLabel(
   }
   
   // In-laws
+  // lateral,up = spouse's parent = mertua
   if (pathStr === 'lateral,up') return isMale ? 'Ayah mertua' : 'Ibu mertua'
+  // down,lateral = child's spouse = menantu
   if (pathStr === 'down,lateral') return isMale ? 'Menantu laki-laki' : 'Menantu perempuan'
   
-  // Siblings-in-law (spouse's sibling or sibling's spouse)
-  if (pathStr === 'lateral,up,down' || pathStr === 'up,down,lateral') {
-    const older = isOlder(targetMember, fromMember)
-    if (older === true) return isMale ? 'Kakak ipar laki-laki' : 'Kakak ipar perempuan'
-    if (older === false) return isMale ? 'Adik ipar laki-laki' : 'Adik ipar perempuan'
+  // Siblings-in-law (ipar)
+  // lateral,up,down = spouse's sibling
+  if (pathStr === 'lateral,up,down') {
+    return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
+  }
+  // up,down,lateral = sibling's spouse
+  if (pathStr === 'up,down,lateral') {
     return isMale ? 'Ipar laki-laki' : 'Ipar perempuan'
   }
   
   // Besan (child's spouse's parent)
-  if (pathStr === 'down,lateral,up') return isMale ? 'Besan laki-laki' : 'Besan perempuan'
+  if (pathStr === 'down,lateral,up') return isMale ? 'Besan (laki-laki)' : 'Besan (perempuan)'
   
   // Uncle/Aunt (parent's sibling)
+  // up,up,down = parent's sibling = paman/bibi
   if (pathStr === 'up,up,down') {
-    const parentSibling = targetMember
-    const parent = fromMember ? undefined : undefined // Would need actual parent reference
-    const older = isOlder(parentSibling, parent)
-    if (older === true) return isMale ? 'Pakde' : 'Bude'
-    if (older === false) return isMale ? 'Om' : 'Tante'
     return isMale ? 'Paman' : 'Bibi'
   }
   
   // Nephew/Niece (sibling's child)
+  // up,down,down = sibling's child = keponakan
   if (pathStr === 'up,down,down') return isMale ? 'Keponakan laki-laki' : 'Keponakan perempuan'
   
-  // Cousin
+  // Cousin (parent's sibling's child)
+  // up,up,down,down = cousin
   if (pathStr === 'up,up,down,down') return isMale ? 'Sepupu laki-laki' : 'Sepupu perempuan'
   
   // Spouse's grandparent
   if (pathStr === 'lateral,up,up') return isMale ? 'Kakek mertua' : 'Nenek mertua'
   
   // Spouse's uncle/aunt
-  if (pathStr === 'lateral,up,up,down') return isMale ? 'Paman pasangan' : 'Bibi pasangan'
+  if (pathStr === 'lateral,up,up,down') return isMale ? 'Paman ipar' : 'Bibi ipar'
   
   // Spouse's niece/nephew
   if (pathStr === 'lateral,up,down,down') return isMale ? 'Keponakan ipar laki-laki' : 'Keponakan ipar perempuan'
@@ -171,13 +182,14 @@ export function getPathExplanation(members: Member[], path: Direction[]): string
     const dirLabel = direction === 'up' ? 'orang tua' : 
                      direction === 'down' ? 'anak' : 
                      'pasangan'
-    parts.push(`${dirLabel} ${member.name}`)
+    parts.push(`${dirLabel}: ${member.nickname || member.name.split(' ')[0]}`)
   }
   
-  return `(${parts.join(', ')})`
+  return `(${parts.join(' → ')})`
 }
 
 // Get relationship label from one member to another
+// Returns what toMember is to fromMember
 export function getRelationshipLabel(
   fromId: number,
   toId: number,
@@ -233,8 +245,8 @@ export function getRelationToSelf(
   if (label.includes('Cucu')) return label.replace('Cucu', 'Cucumu')
   if (label.includes('mertua')) return label
   if (label.includes('ipar')) return label
-  if (label.includes('Paman') || label === 'Om' || label === 'Pakde') return 'Pamanmu'
-  if (label.includes('Bibi') || label === 'Tante' || label === 'Bude') return 'Bibimu'
+  if (label.includes('Paman')) return 'Pamanmu'
+  if (label.includes('Bibi')) return 'Bibimu'
   if (label.includes('Keponakan')) return label.replace('Keponakan', 'Keponakanmu')
   if (label.includes('Sepupu')) return label.replace('Sepupu', 'Sepupumu')
   

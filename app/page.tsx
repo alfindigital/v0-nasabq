@@ -26,7 +26,7 @@ export default function Home() {
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [addContext, setAddContext] = useState<{
     targetId?: number
-    relationshipType?: 'child' | 'parent' | 'spouse' | 'sibling'
+    relationshipType?: 'child' | 'parent' | 'spouse'
   } | null>(null)
   const [toast, setToast] = useState<{ message: string } | null>(null)
   

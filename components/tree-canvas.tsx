@@ -1,16 +1,15 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import { useNasabStore } from '@/lib/store'
 import type { Member } from '@/lib/types'
 import { TreeNode } from './tree-node'
 import { QuickActionPopup } from './quick-action-popup'
 import { ZoomControls } from './zoom-controls'
-import { Maximize2, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 
 interface TreeCanvasProps {
   onViewMember: (member: Member) => void
-  onAddRelative: (context: { targetId: number; relationshipType: 'child' | 'parent' | 'spouse' | 'sibling' }) => void
+  onAddRelative: (context: { targetId: number; relationshipType: 'child' | 'parent' | 'spouse' }) => void
 }
 
 interface NodePosition {
@@ -19,6 +18,7 @@ interface NodePosition {
   y: number
   generation: number
   spouseId?: number
+  isSpouse?: boolean
 }
 
 export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
@@ -28,6 +28,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   const [quickAction, setQuickAction] = useState<{ member: Member; x: number; y: number } | null>(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set())
   const [newNodeId, setNewNodeId] = useState<number | null>(null)
+  const [initialized, setInitialized] = useState(false)
   
   const canvasRef = useRef<HTMLDivElement>(null)
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
@@ -35,39 +36,19 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   const { members, getParents, getChildren, getSpouses } = useNasabStore()
   const self = members.find(m => m.isSelf)
 
+  // Constants for layout
+  const NODE_WIDTH = 140
+  const NODE_HEIGHT = 46
+  const H_GAP = 40 // Horizontal gap between unrelated nodes
+  const V_GAP = 100 // Vertical gap between generations
+  const SPOUSE_GAP = 16 // Small gap between spouses (horizontal)
+
   // Build tree structure and calculate positions
   const nodePositions = useMemo(() => {
     if (!self) return []
     
     const positions: NodePosition[] = []
     const visited = new Set<number>()
-    const NODE_WIDTH = 160
-    const NODE_HEIGHT = 46
-    const H_GAP = 80
-    const V_GAP = 120
-    const SPOUSE_GAP = 20
-
-    // Get generation for a member (relative to self)
-    const getGeneration = (id: number, from: number, visited: Set<number>): number => {
-      if (visited.has(id)) return 0
-      if (id === from) return 0
-      visited.add(id)
-      
-      const member = members.find(m => m.id === id)
-      if (!member) return 0
-      
-      // Check if parent of from
-      const fromMember = members.find(m => m.id === from)
-      if (fromMember?.relationships.some(r => r.type === 'parent' && r.targetId === id)) {
-        return -1
-      }
-      // Check if child of from
-      if (fromMember?.relationships.some(r => r.type === 'child' && r.targetId === id)) {
-        return 1
-      }
-      
-      return 0
-    }
 
     // Calculate generations by traversing from self
     const memberGenerations = new Map<number, number>()
@@ -78,16 +59,15 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       memberGenerations.set(id, gen)
       
       const parents = getParents(id)
-      parents.forEach(p => calculateGenerations(p.id, gen - 1, visited))
+      parents.forEach(p => calculateGenerations(p.id, gen - 1, new Set(visited)))
       
       const children = getChildren(id)
-      children.forEach(c => calculateGenerations(c.id, gen + 1, visited))
+      children.forEach(c => calculateGenerations(c.id, gen + 1, new Set(visited)))
       
       const spouses = getSpouses(id)
       spouses.forEach(s => {
-        if (!visited.has(s.id)) {
+        if (!memberGenerations.has(s.id)) {
           memberGenerations.set(s.id, gen)
-          visited.add(s.id)
         }
       })
     }
@@ -97,9 +77,11 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     // Group by generation
     const generations = new Map<number, Member[]>()
     members.forEach(m => {
-      const gen = memberGenerations.get(m.id) ?? 0
-      if (!generations.has(gen)) generations.set(gen, [])
-      generations.get(gen)!.push(m)
+      const gen = memberGenerations.get(m.id)
+      if (gen !== undefined) {
+        if (!generations.has(gen)) generations.set(gen, [])
+        generations.get(gen)!.push(m)
+      }
     })
 
     // Position nodes by generation
@@ -110,64 +92,85 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       const processedInGen = new Set<number>()
       let xOffset = 0
       
-      // Group spouses together
-      genMembers.forEach(member => {
+      // Sort to prioritize self and keep families together
+      const sortedMembers = [...genMembers].sort((a, b) => {
+        if (a.isSelf) return -1
+        if (b.isSelf) return 1
+        return 0
+      })
+
+      // Group spouses together horizontally
+      sortedMembers.forEach(member => {
         if (processedInGen.has(member.id)) return
         
         const spouses = getSpouses(member.id).filter(s => memberGenerations.get(s.id) === gen)
         
+        // Determine if this member should be visible
+        const isVisible = expandedNodes.size === 0 || 
+                          member.isSelf || 
+                          getParents(member.id).some(p => expandedNodes.has(p.id)) ||
+                          spouses.some(s => getParents(s.id).some(p => expandedNodes.has(p.id))) ||
+                          expandedNodes.has(member.id)
+
+        if (!isVisible && gen !== 0) return
+
         // Position member
         positions.push({
           id: member.id,
           x: xOffset,
           y: gen * (NODE_HEIGHT + V_GAP),
           generation: gen,
-          spouseId: spouses[0]?.id
+          spouseId: spouses[0]?.id,
+          isSpouse: false
         })
         processedInGen.add(member.id)
-        xOffset += NODE_WIDTH + H_GAP
         
-        // Position spouse next to member
+        // Position spouse(s) horizontally next to member
         spouses.forEach(spouse => {
           if (!processedInGen.has(spouse.id)) {
+            xOffset += NODE_WIDTH + SPOUSE_GAP
             positions.push({
               id: spouse.id,
-              x: xOffset - H_GAP + SPOUSE_GAP,
+              x: xOffset,
               y: gen * (NODE_HEIGHT + V_GAP),
               generation: gen,
-              spouseId: member.id
+              spouseId: member.id,
+              isSpouse: true
             })
             processedInGen.add(spouse.id)
-            xOffset += NODE_WIDTH + SPOUSE_GAP
           }
         })
+        
+        xOffset += NODE_WIDTH + H_GAP
       })
     })
 
     // Center horizontally
-    const minX = Math.min(...positions.map(p => p.x))
-    const maxX = Math.max(...positions.map(p => p.x))
-    const centerX = (minX + maxX) / 2
-    positions.forEach(p => p.x -= centerX)
+    if (positions.length > 0) {
+      const minX = Math.min(...positions.map(p => p.x))
+      const maxX = Math.max(...positions.map(p => p.x))
+      const centerX = (minX + maxX) / 2
+      positions.forEach(p => p.x -= centerX)
+    }
 
     return positions
-  }, [members, self, getParents, getChildren, getSpouses])
+  }, [members, self, getParents, getChildren, getSpouses, expandedNodes])
 
-  // Expand first 2 generations by default
+  // Expand all nodes by default on first load
   useEffect(() => {
-    if (self) {
-      const toExpand = new Set<number>()
-      const addWithChildren = (id: number, depth: number) => {
-        if (depth > 2) return
-        toExpand.add(id)
-        getChildren(id).forEach(c => addWithChildren(c.id, depth + 1))
-      }
-      addWithChildren(self.id, 0)
-      // Also expand parents
-      getParents(self.id).forEach(p => toExpand.add(p.id))
-      setExpandedNodes(toExpand)
+    if (self && !initialized) {
+      const allIds = new Set<number>(members.map(m => m.id))
+      setExpandedNodes(allIds)
+      setInitialized(true)
     }
-  }, [self?.id])
+  }, [self, members, initialized])
+
+  // Auto-fit to screen on first render
+  useEffect(() => {
+    if (initialized && nodePositions.length > 0 && canvasRef.current) {
+      handleFitToScreen()
+    }
+  }, [initialized, nodePositions.length])
 
   // Clear new node highlight after animation
   useEffect(() => {
@@ -242,9 +245,9 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     
     const rect = canvasRef.current.getBoundingClientRect()
     const minX = Math.min(...nodePositions.map(p => p.x))
-    const maxX = Math.max(...nodePositions.map(p => p.x)) + 160
+    const maxX = Math.max(...nodePositions.map(p => p.x)) + NODE_WIDTH
     const minY = Math.min(...nodePositions.map(p => p.y))
-    const maxY = Math.max(...nodePositions.map(p => p.y)) + 46
+    const maxY = Math.max(...nodePositions.map(p => p.y)) + NODE_HEIGHT
     
     const treeWidth = maxX - minX + 80
     const treeHeight = maxY - minY + 80
@@ -252,13 +255,13 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     const scale = Math.min(
       rect.width / treeWidth,
       rect.height / treeHeight,
-      1.5
+      1.2
     )
     
     setTransform({
       x: rect.width / 2,
-      y: rect.height / 2 - (minY + maxY) / 2 * scale,
-      scale: Math.max(0.3, Math.min(scale, 1.5))
+      y: rect.height / 3,
+      scale: Math.max(0.4, Math.min(scale, 1.2))
     })
   }
 
@@ -310,22 +313,14 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
+        // Also collapse all descendants
+        const descendants = getChildren(id)
+        descendants.forEach(d => next.delete(d.id))
       } else {
         next.add(id)
       }
       return next
     })
-  }
-
-  // Check if node should be visible based on expanded state
-  const isNodeVisible = (id: number): boolean => {
-    if (!self) return false
-    if (id === self.id) return true
-    
-    const parents = getParents(id)
-    // If any parent is expanded, show this node
-    return parents.some(p => expandedNodes.has(p.id)) || 
-           getSpouses(id).some(s => parents.some(p => expandedNodes.has(p.id)))
   }
 
   // Generate connector lines SVG
@@ -337,50 +332,53 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       const member = members.find(m => m.id === pos.id)
       if (!member) return
       
-      // Spouse connector
-      if (pos.spouseId) {
+      // Spouse connector (horizontal line between spouses)
+      if (pos.spouseId && !pos.isSpouse) {
         const spousePos = posMap.get(pos.spouseId)
-        if (spousePos && pos.x < spousePos.x) {
-          const midX = (pos.x + spousePos.x + 160) / 2
-          const y = pos.y + 23
+        if (spousePos) {
+          const y = pos.y + NODE_HEIGHT / 2
           lines.push(
             <g key={`spouse-${pos.id}-${pos.spouseId}`}>
               <line
-                x1={pos.x + 160}
+                x1={pos.x + NODE_WIDTH}
                 y1={y}
                 x2={spousePos.x}
                 y2={y}
                 stroke="var(--primary)"
                 strokeWidth="2"
-                strokeOpacity="0.2"
+                strokeOpacity="0.4"
               />
+              {/* Marriage indicator */}
               <circle
-                cx={midX}
+                cx={(pos.x + NODE_WIDTH + spousePos.x) / 2}
                 cy={y}
                 r="4"
                 fill="var(--primary)"
-                fillOpacity="0.3"
+                fillOpacity="0.5"
               />
             </g>
           )
         }
       }
       
-      // Parent-child connectors
+      // Parent-child connectors (vertical lines)
       const children = getChildren(pos.id)
-      if (children.length > 0 && expandedNodes.has(pos.id)) {
+      const visibleChildren = children.filter(c => posMap.has(c.id))
+      
+      if (visibleChildren.length > 0 && expandedNodes.has(pos.id)) {
         const spouse = getSpouses(pos.id)[0]
         const spousePos = spouse ? posMap.get(spouse.id) : null
         
-        // Starting point (bottom of parent or couple)
-        let startX = pos.x + 80
+        // Starting point (bottom of parent or couple center)
+        let startX = pos.x + NODE_WIDTH / 2
         if (spousePos && pos.x < spousePos.x) {
-          startX = (pos.x + spousePos.x + 160) / 2
+          // Center between couple
+          startX = (pos.x + NODE_WIDTH + spousePos.x) / 2
         }
-        const startY = pos.y + 46
+        const startY = pos.y + NODE_HEIGHT
         
         // Get visible children positions
-        const childPositions = children
+        const childPositions = visibleChildren
           .map(c => posMap.get(c.id))
           .filter((cp): cp is NodePosition => cp !== undefined)
         
@@ -388,7 +386,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           const childY = childPositions[0].y
           const midY = (startY + childY) / 2
           
-          // Vertical line down from parent
+          // Vertical line down from parent(s)
           lines.push(
             <line
               key={`down-${pos.id}`}
@@ -398,13 +396,13 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
               y2={midY}
               stroke="var(--primary)"
               strokeWidth="2"
-              strokeOpacity="0.2"
+              strokeOpacity="0.3"
             />
           )
           
-          // Horizontal distribution bar
-          const leftX = Math.min(...childPositions.map(cp => cp.x + 80))
-          const rightX = Math.max(...childPositions.map(cp => cp.x + 80))
+          // Horizontal distribution bar if multiple children
+          const leftX = Math.min(...childPositions.map(cp => cp.x + NODE_WIDTH / 2))
+          const rightX = Math.max(...childPositions.map(cp => cp.x + NODE_WIDTH / 2))
           
           if (childPositions.length > 1) {
             lines.push(
@@ -416,7 +414,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
                 y2={midY}
                 stroke="var(--primary)"
                 strokeWidth="2"
-                strokeOpacity="0.2"
+                strokeOpacity="0.3"
               />
             )
           }
@@ -426,13 +424,13 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
             lines.push(
               <line
                 key={`child-${pos.id}-${cp.id}`}
-                x1={cp.x + 80}
+                x1={cp.x + NODE_WIDTH / 2}
                 y1={midY}
-                x2={cp.x + 80}
+                x2={cp.x + NODE_WIDTH / 2}
                 y2={cp.y}
                 stroke="var(--primary)"
                 strokeWidth="2"
-                strokeOpacity="0.2"
+                strokeOpacity="0.3"
               />
             )
           })
@@ -446,7 +444,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   // Empty state
   if (members.length === 1 && self) {
     return (
-      <div className="h-full bg-canvas flex flex-col items-center justify-center p-6 text-center">
+      <div className="h-full bg-canvas canvas-pattern flex flex-col items-center justify-center p-6 text-center">
         <div className="relative">
           <div className="absolute inset-0 border-2 border-dashed border-primary/30 rounded-full animate-pulse" style={{ margin: '-20px' }} />
           <TreeNode
@@ -461,7 +459,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           Tap + atau tekan lama pada namamu untuk mulai.
         </p>
         
-        {/* Zoom controls still visible */}
         <ZoomControls
           onFit={handleFitToScreen}
           onZoomIn={handleZoomIn}

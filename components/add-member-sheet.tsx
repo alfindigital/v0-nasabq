@@ -1,16 +1,16 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Search, Plus, ChevronDown } from 'lucide-react'
+import { X, Search, ChevronDown } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
-import type { Gender, RelationshipType } from '@/lib/types'
+import type { Gender } from '@/lib/types'
 
 interface AddMemberSheetProps {
   open: boolean
   onClose: () => void
   context?: {
     targetId?: number
-    relationshipType?: 'child' | 'parent' | 'spouse' | 'sibling'
+    relationshipType?: 'child' | 'parent' | 'spouse'
   } | null
   onAdded: (name: string) => void
 }
@@ -20,19 +20,18 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
   const [nickname, setNickname] = useState('')
   const [gender, setGender] = useState<Gender | null>(null)
   const [birthYear, setBirthYear] = useState('')
-  const [birthPlace, setBirthPlace] = useState('')
   const [isDeceased, setIsDeceased] = useState(false)
   const [deathYear, setDeathYear] = useState('')
   const [deathPlace, setDeathPlace] = useState('')
-  const [address, setAddress] = useState('')
+  const [domicile, setDomicile] = useState('')
   const [notes, setNotes] = useState('')
   const [linkTo, setLinkTo] = useState<number | null>(null)
-  const [linkType, setLinkType] = useState<'child' | 'parent' | 'spouse' | 'sibling' | null>(null)
+  const [linkType, setLinkType] = useState<'child' | 'parent' | 'spouse' | null>(null)
   const [showLinkDropdown, setShowLinkDropdown] = useState(false)
   const [linkSearch, setLinkSearch] = useState('')
   
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const { members, addMember, addRelationship, getParents, getSiblings } = useNasabStore()
+  const { members, addMember, addRelationship, getParents } = useNasabStore()
 
   // Reset form when opening/closing
   useEffect(() => {
@@ -41,11 +40,10 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       setNickname('')
       setGender(null)
       setBirthYear('')
-      setBirthPlace('')
       setIsDeceased(false)
       setDeathYear('')
       setDeathPlace('')
-      setAddress('')
+      setDomicile('')
       setNotes('')
       setLinkSearch('')
       setShowLinkDropdown(false)
@@ -79,11 +77,11 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       nickname: nickname.trim() || null,
       gender,
       birthYear: birthYear ? parseInt(birthYear) : null,
-      birthPlace: birthPlace.trim() || null,
+      birthPlace: null,
       isDeceased,
       deathYear: deathYear ? parseInt(deathYear) : null,
       deathPlace: deathPlace.trim() || null,
-      address: address.trim() || null,
+      address: domicile.trim() || null,
       notes: notes.trim() || null,
       isSelf: false,
     })
@@ -91,19 +89,13 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     // Add relationship if specified
     if (linkTo && linkType) {
       if (linkType === 'child') {
-        // New member is child of target
+        // New member is child of target (target is parent)
         addRelationship(newId, linkTo, 'parent')
       } else if (linkType === 'parent') {
-        // New member is parent of target
+        // New member is parent of target (target is child)
         addRelationship(newId, linkTo, 'child')
       } else if (linkType === 'spouse') {
         addRelationship(newId, linkTo, 'spouse')
-      } else if (linkType === 'sibling') {
-        // Link to same parents as target
-        const targetParents = getParents(linkTo)
-        targetParents.forEach(parent => {
-          addRelationship(newId, parent.id, 'parent')
-        })
       }
     }
 
@@ -119,7 +111,6 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       case 'child': return `adalah anak dari ${targetName}`
       case 'parent': return `adalah orang tua dari ${targetName}`
       case 'spouse': return `adalah pasangan dari ${targetName}`
-      case 'sibling': return `adalah saudara dari ${targetName}`
       default: return ''
     }
   }
@@ -223,33 +214,19 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
             </div>
           </div>
 
-          {/* Birth info row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Tahun Lahir
-              </label>
-              <input
-                type="number"
-                inputMode="numeric"
-                value={birthYear}
-                onChange={(e) => setBirthYear(e.target.value)}
-                placeholder="cth: 1990"
-                className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Tempat Lahir
-              </label>
-              <input
-                type="text"
-                value={birthPlace}
-                onChange={(e) => setBirthPlace(e.target.value)}
-                placeholder="cth: Purwokerto"
-                className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
-            </div>
+          {/* Birth year */}
+          <div>
+            <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+              Tahun Lahir
+            </label>
+            <input
+              type="number"
+              inputMode="numeric"
+              value={birthYear}
+              onChange={(e) => setBirthYear(e.target.value)}
+              placeholder="cth: 1990"
+              className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+            />
           </div>
 
           {/* Deceased toggle */}
@@ -300,15 +277,15 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
             )}
           </div>
 
-          {/* Address */}
+          {/* Domicile */}
           <div>
             <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-              Alamat / Domisili
+              Domisili
             </label>
             <input
               type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              value={domicile}
+              onChange={(e) => setDomicile(e.target.value)}
               placeholder="cth: Jakarta Selatan"
               className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
             />
@@ -396,16 +373,20 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 )}
               </div>
 
-              {/* Relationship type */}
+              {/* Relationship type - simplified to 3 options */}
               {linkTo && (
                 <div className="mt-3 space-y-2">
                   <p className="text-xs text-muted-foreground">Jenis Hubungan:</p>
-                  {(['child', 'parent', 'spouse', 'sibling'] as const).map(type => {
+                  {(['child', 'parent', 'spouse'] as const).map(type => {
                     const labels = {
+                      child: `Anak`,
+                      parent: `Orang Tua`,
+                      spouse: `Pasangan`,
+                    }
+                    const descriptions = {
                       child: `${name || '[Nama baru]'} adalah anak dari ${targetMember?.name}`,
                       parent: `${name || '[Nama baru]'} adalah orang tua dari ${targetMember?.name}`,
                       spouse: `${name || '[Nama baru]'} adalah pasangan dari ${targetMember?.name}`,
-                      sibling: `${name || '[Nama baru]'} adalah saudara dari ${targetMember?.name}`,
                     }
                     return (
                       <button
@@ -418,7 +399,8 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                             : 'bg-background border-border text-muted-foreground hover:border-primary/30'
                         }`}
                       >
-                        {labels[type]}
+                        <span className="font-medium">{labels[type]}</span>
+                        <p className="text-xs mt-0.5 opacity-70">{descriptions[type]}</p>
                       </button>
                     )
                   })}

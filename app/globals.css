@@ -31,13 +31,14 @@
   --border: #DCE5E0;
   --input: #DCE5E0;
   --ring: #0D7C5F;
-  --female-accent: #7C5DA0;
+  --female-accent: #9B5DA0;
   --radius: 0.625rem;
   --card-shadow: 0 2px 12px rgba(13,124,95,0.06);
 }
 
+/* Dark theme - applied when html has .dark class */
+html.dark,
 .dark {
-  /* Nasab Dark Theme */
   --background: #0F1613;
   --foreground: #E8F0EC;
   --card: #1A2620;
@@ -52,7 +53,7 @@
   --secondary: #6B7F78;
   --secondary-foreground: #E8F0EC;
   --muted: #1A2620;
-  --muted-foreground: #6B7F78;
+  --muted-foreground: #8B9F98;
   --accent: #2ECC9B;
   --accent-foreground: #0F1613;
   --accent-glow: rgba(46,204,155,0.15);
@@ -61,10 +62,10 @@
   --gold-glow: rgba(224,184,92,0.3);
   --destructive: #E05555;
   --destructive-foreground: #FFFFFF;
-  --border: #243530;
-  --input: #243530;
+  --border: #2D3D36;
+  --input: #2D3D36;
   --ring: #2ECC9B;
-  --female-accent: #9B7BC0;
+  --female-accent: #B07BC0;
   --card-shadow: 0 2px 12px rgba(0,0,0,0.3);
 }
 
@@ -122,7 +123,6 @@
 .canvas-pattern {
   background-image: radial-gradient(circle, var(--border) 1px, transparent 1px);
   background-size: 24px 24px;
-  opacity: 0.5;
 }
 
 /* Self node gold pulse animation */
