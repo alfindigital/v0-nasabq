@@ -18,19 +18,74 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const [deathYear, setDeathYear] = useState('')
   const [notes, setNotes] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errors, setErrors] = useState<Record<string, string>>({})
   
   const addMember = useNasabStore((state) => state.addMember)
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    // Name validation
+    if (!name.trim()) {
+      newErrors.name = 'Nama lengkap tidak boleh kosong'
+    } else if (name.length > 100) {
+      newErrors.name = 'Nama terlalu panjang (maksimal 100 karakter)'
+    }
+
+    // Gender validation
+    if (!gender) {
+      newErrors.gender = 'Jenis kelamin harus dipilih'
+    }
+
+    // Birth year validation
+    if (birthYear) {
+      const year = parseInt(birthYear)
+      if (isNaN(year)) {
+        newErrors.birthYear = 'Tahun lahir harus berupa angka'
+      } else if (year < 1900 || year > new Date().getFullYear()) {
+        newErrors.birthYear = `Tahun lahir harus antara 1900 - ${new Date().getFullYear()}`
+      }
+    }
+
+    // Death year validation
+    if (isDeceased && deathYear) {
+      const year = parseInt(deathYear)
+      if (isNaN(year)) {
+        newErrors.deathYear = 'Tahun wafat harus berupa angka'
+      } else if (year < 1900 || year > new Date().getFullYear()) {
+        newErrors.deathYear = `Tahun wafat harus antara 1900 - ${new Date().getFullYear()}`
+      } else if (birthYear && parseInt(birthYear) > year) {
+        newErrors.deathYear = 'Tahun wafat tidak boleh lebih awal dari tahun lahir'
+      }
+    } else if (isDeceased && !deathYear) {
+      newErrors.deathYear = 'Tahun wafat harus diisi jika sudah meninggal'
+    }
+
+    // Domicile validation
+    if (domicile && domicile.length > 100) {
+      newErrors.domicile = 'Domisili terlalu panjang (maksimal 100 karakter)'
+    }
+
+    // Notes validation
+    if (notes && notes.length > 500) {
+      newErrors.notes = 'Catatan terlalu panjang (maksimal 500 karakter)'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!name.trim() || !gender || isSubmitting) return
+    
+    if (!validateForm() || isSubmitting) return
     
     setIsSubmitting(true)
     
     addMember({
       name: name.trim(),
       nickname: nickname.trim() || null,
-      gender,
+      gender: gender!,
       birthYear: birthYear ? parseInt(birthYear) : null,
       birthPlace: null,
       isDeceased,
@@ -43,7 +98,23 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     onComplete(name.trim())
   }
 
-  const isValid = name.trim() && gender
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setName(value)
+    if (errors.name) setErrors(e => ({ ...e, name: '' }))
+  }
+
+  const handleBirthYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setBirthYear(value)
+    if (errors.birthYear) setErrors(e => ({ ...e, birthYear: '' }))
+  }
+
+  const handleDeathYearChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setDeathYear(value)
+    if (errors.deathYear) setErrors(e => ({ ...e, deathYear: '' }))
+  }
 
   return (
     <div className="min-h-[100dvh] bg-background flex items-center justify-center p-6">
@@ -95,10 +166,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 autoFocus
                 autoComplete="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={handleNameChange}
                 placeholder="cth: Ahmad Fauzi"
-                className="w-full h-11 px-4 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60"
+                className={`w-full h-11 px-4 text-sm bg-card border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60 ${
+                  errors.name ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                }`}
               />
+              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
             </div>
 
             {/* Nickname */}
@@ -123,7 +197,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setGender('M')}
+                  onClick={() => {
+                    setGender('M')
+                    if (errors.gender) setErrors(e => ({ ...e, gender: '' }))
+                  }}
                   className={`h-11 rounded-lg text-sm font-medium transition-all ${
                     gender === 'M'
                       ? 'bg-primary text-primary-foreground'
@@ -134,7 +211,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGender('F')}
+                  onClick={() => {
+                    setGender('F')
+                    if (errors.gender) setErrors(e => ({ ...e, gender: '' }))
+                  }}
                   className={`h-11 rounded-lg text-sm font-medium transition-all ${
                     gender === 'F'
                       ? 'bg-primary text-primary-foreground'
@@ -144,6 +224,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   Perempuan
                 </button>
               </div>
+              {errors.gender && <p className="text-xs text-destructive mt-1">{errors.gender}</p>}
             </div>
 
             {/* Birth Year & Domicile */}
@@ -156,10 +237,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   type="number"
                   inputMode="numeric"
                   value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
+                  onChange={handleBirthYearChange}
                   placeholder="cth: 1990"
-                  className="w-full h-11 px-4 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60"
+                  className={`w-full h-11 px-4 text-sm bg-card border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60 ${
+                    errors.birthYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                  }`}
                 />
+                {errors.birthYear && <p className="text-xs text-destructive mt-1">{errors.birthYear}</p>}
               </div>
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
@@ -168,10 +252,16 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 <input
                   type="text"
                   value={domicile}
-                  onChange={(e) => setDomicile(e.target.value)}
+                  onChange={(e) => {
+                    setDomicile(e.target.value)
+                    if (errors.domicile) setErrors(er => ({ ...er, domicile: '' }))
+                  }}
                   placeholder="cth: Jakarta"
-                  className="w-full h-11 px-4 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60"
+                  className={`w-full h-11 px-4 text-sm bg-card border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60 ${
+                    errors.domicile ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                  }`}
                 />
+                {errors.domicile && <p className="text-xs text-destructive mt-1">{errors.domicile}</p>}
               </div>
             </div>
 
@@ -195,16 +285,19 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               {isDeceased && (
                 <div className="mt-3 pl-8">
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Tahun Wafat
+                    Tahun Wafat <span className="text-destructive">*</span>
                   </label>
                   <input
                     type="number"
                     inputMode="numeric"
                     value={deathYear}
-                    onChange={(e) => setDeathYear(e.target.value)}
+                    onChange={handleDeathYearChange}
                     placeholder="cth: 2020"
-                    className="w-full h-10 px-3 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60"
+                    className={`w-full h-10 px-3 text-sm bg-card border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60 ${
+                      errors.deathYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                    }`}
                   />
+                  {errors.deathYear && <p className="text-xs text-destructive mt-1">{errors.deathYear}</p>}
                 </div>
               )}
             </div>
@@ -216,18 +309,24 @@ export function Onboarding({ onComplete }: OnboardingProps) {
               </label>
               <textarea
                 value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                onChange={(e) => {
+                  setNotes(e.target.value)
+                  if (errors.notes) setErrors(er => ({ ...er, notes: '' }))
+                }}
                 placeholder="Catatan tambahan (opsional)"
                 rows={2}
-                className="w-full px-4 py-2.5 text-sm bg-card border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60 resize-none"
+                className={`w-full px-4 py-2.5 text-sm bg-card border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors placeholder:text-muted-foreground/60 resize-none ${
+                  errors.notes ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                }`}
               />
+              {errors.notes && <p className="text-xs text-destructive mt-1">{errors.notes}</p>}
             </div>
           </div>
 
           {/* Submit */}
           <button
             type="submit"
-            disabled={!isValid || isSubmitting}
+            disabled={isSubmitting}
             className="w-full h-12 mt-6 bg-primary text-primary-foreground font-medium text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover active:scale-[0.98] transition-all"
           >
             {isSubmitting ? 'Memulai...' : 'Mulai'}

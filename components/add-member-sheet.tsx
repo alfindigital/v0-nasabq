@@ -40,6 +40,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
   const [newRelMemberId, setNewRelMemberId] = useState<number | null>(null)
   const [newRelType, setNewRelType] = useState<'child' | 'parent' | 'spouse' | null>(null)
   const [relSearch, setRelSearch] = useState('')
+  const [errors, setErrors] = useState<Record<string, string>>({})
   
   const { members, addMember, addRelationship, getMember } = useNasabStore()
 
@@ -121,9 +122,52 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     setRelationships(relationships.filter((_, i) => i !== index))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim() || !gender) return
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!name.trim()) {
+      newErrors.name = 'Nama lengkap tidak boleh kosong'
+    } else if (name.length > 100) {
+      newErrors.name = 'Nama terlalu panjang (maksimal 100 karakter)'
+    }
+
+    if (!gender) {
+      newErrors.gender = 'Jenis kelamin harus dipilih'
+    }
+
+    if (birthYear) {
+      const year = parseInt(birthYear)
+      if (isNaN(year)) {
+        newErrors.birthYear = 'Tahun lahir harus berupa angka'
+      } else if (year < 1900 || year > new Date().getFullYear()) {
+        newErrors.birthYear = `Tahun lahir harus antara 1900 - ${new Date().getFullYear()}`
+      }
+    }
+
+    if (isDeceased && deathYear) {
+      const year = parseInt(deathYear)
+      if (isNaN(year)) {
+        newErrors.deathYear = 'Tahun wafat harus berupa angka'
+      } else if (year < 1900 || year > new Date().getFullYear()) {
+        newErrors.deathYear = `Tahun wafat harus antara 1900 - ${new Date().getFullYear()}`
+      } else if (birthYear && parseInt(birthYear) > year) {
+        newErrors.deathYear = 'Tahun wafat tidak boleh lebih awal dari tahun lahir'
+      }
+    } else if (isDeceased && !deathYear) {
+      newErrors.deathYear = 'Tahun wafat harus diisi jika sudah meninggal'
+    }
+
+    if (domicile && domicile.length > 100) {
+      newErrors.domicile = 'Domisili terlalu panjang (maksimal 100 karakter)'
+    }
+
+    if (notes && notes.length > 500) {
+      newErrors.notes = 'Catatan terlalu panjang (maksimal 500 karakter)'
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
     const newId = addMember({
       name: name.trim(),
@@ -287,10 +331,16 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 <input
                   type="text"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    if (errors.name) setErrors(er => ({ ...er, name: '' }))
+                  }}
                   placeholder="cth: Ahmad Fauzi"
-                  className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  className={`w-full h-11 px-4 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                    errors.name ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                  }`}
                 />
+                {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
               </div>
 
               {/* Nickname */}
@@ -315,7 +365,10 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setGender('M')}
+                    onClick={() => {
+                      setGender('M')
+                      if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
+                    }}
                     className={`h-11 rounded-lg text-sm font-medium transition-all ${
                       gender === 'M'
                         ? 'bg-primary text-primary-foreground'
@@ -326,7 +379,10 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                   </button>
                   <button
                     type="button"
-                    onClick={() => setGender('F')}
+                    onClick={() => {
+                      setGender('F')
+                      if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
+                    }}
                     className={`h-11 rounded-lg text-sm font-medium transition-all ${
                       gender === 'F'
                         ? 'bg-primary text-primary-foreground'
@@ -336,6 +392,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     Perempuan
                   </button>
                 </div>
+                {errors.gender && <p className="text-xs text-destructive mt-1">{errors.gender}</p>}
               </div>
 
               {/* Birth year & Domicile */}
@@ -348,10 +405,16 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     type="number"
                     inputMode="numeric"
                     value={birthYear}
-                    onChange={(e) => setBirthYear(e.target.value)}
+                    onChange={(e) => {
+                      setBirthYear(e.target.value)
+                      if (errors.birthYear) setErrors(er => ({ ...er, birthYear: '' }))
+                    }}
                     placeholder="cth: 1990"
-                    className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                    className={`w-full h-11 px-4 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                      errors.birthYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                    }`}
                   />
+                  {errors.birthYear && <p className="text-xs text-destructive mt-1">{errors.birthYear}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">
@@ -387,16 +450,22 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 {isDeceased && (
                   <div className="mt-3 pl-8">
                     <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                      Tahun Wafat
+                      Tahun Wafat <span className="text-destructive">*</span>
                     </label>
                     <input
                       type="number"
                       inputMode="numeric"
                       value={deathYear}
-                      onChange={(e) => setDeathYear(e.target.value)}
+                      onChange={(e) => {
+                        setDeathYear(e.target.value)
+                        if (errors.deathYear) setErrors(er => ({ ...er, deathYear: '' }))
+                      }}
                       placeholder="cth: 2020"
-                      className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                      className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                        errors.deathYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                      }`}
                     />
+                    {errors.deathYear && <p className="text-xs text-destructive mt-1">{errors.deathYear}</p>}
                   </div>
                 )}
               </div>
