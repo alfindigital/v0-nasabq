@@ -6,6 +6,7 @@ import type { Member } from '@/lib/types'
 import { TreeNode } from './tree-node'
 import { QuickActionPopup } from './quick-action-popup'
 import { ZoomControls } from './zoom-controls'
+import { getMahramStatus } from '@/lib/relationship'
 
 interface TreeCanvasProps {
   onViewMember: (member: Member) => void
@@ -517,6 +518,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           member={self}
           isSelf
           isNew={false}
+          mahramStatus="self"
           onTap={() => onViewMember(self)}
           onLongPress={(e) => handleNodeLongPress(self, e)}
         />
@@ -595,6 +597,18 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           
           const childCount = getChildren(pos.id).length
           const isCollapsed = collapsedNodes.has(pos.id)
+          
+          // Calculate mahram status from self's perspective
+          const mahramStatus = self ? getMahramStatus(
+            self.id,
+            member.id,
+            self.gender,
+            member,
+            members,
+            getParents,
+            getChildren,
+            getSpouses
+          ) : undefined
 
           return (
             <div
@@ -609,6 +623,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
                 hasChildren={childCount > 0}
                 isExpanded={!isCollapsed}
                 childCount={childCount}
+                mahramStatus={mahramStatus}
                 onTap={() => handleNodeTap(member)}
                 onLongPress={(e) => handleNodeLongPress(member, e)}
                 onToggleExpand={() => toggleCollapse(pos.id)}

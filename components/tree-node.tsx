@@ -11,6 +11,7 @@ interface TreeNodeProps {
   hasChildren?: boolean
   isExpanded?: boolean
   childCount?: number
+  mahramStatus?: 'mahram' | 'non-mahram' | 'spouse' | 'same-gender' | 'self'
   onTap: () => void
   onLongPress: (e: React.MouseEvent | React.TouchEvent) => void
   onToggleExpand?: () => void
@@ -23,6 +24,7 @@ export function TreeNode({
   hasChildren,
   isExpanded,
   childCount,
+  mahramStatus,
   onTap,
   onLongPress,
   onToggleExpand
@@ -57,11 +59,15 @@ export function TreeNode({
 
   const genderBorderColor = member.gender === 'M' ? 'border-l-primary' : 'border-l-female-accent'
   
+  // Mahram indicator: green = mahram (safe), red = non-mahram (boundaries needed)
+  // Only show for opposite gender, not for self or same gender
+  const showMahramIndicator = mahramStatus && mahramStatus !== 'self' && mahramStatus !== 'same-gender'
+  
   return (
     <div className="relative" style={{ width: 140 }}>
       <div
         className={`
-          flex items-center gap-2 h-[50px] px-3 bg-card border-2 border-border rounded-full
+          relative flex items-center gap-2 h-[50px] px-3 bg-card border-2 border-border rounded-full
           cursor-pointer select-none transition-all duration-200
           hover:scale-105 active:scale-100
           ${genderBorderColor} border-l-4
@@ -76,6 +82,22 @@ export function TreeNode({
         onTouchEnd={handleEnd}
         onTouchCancel={handleCancel}
       >
+        {/* Mahram indicator light */}
+        {showMahramIndicator && (
+          <div 
+            className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card shadow-sm ${
+              mahramStatus === 'mahram' ? 'bg-green-500' : 
+              mahramStatus === 'spouse' ? 'bg-pink-500' : 
+              'bg-red-500'
+            }`}
+            title={
+              mahramStatus === 'mahram' ? 'Mahram' : 
+              mahramStatus === 'spouse' ? 'Pasangan' : 
+              'Non-Mahram'
+            }
+          />
+        )}
+
         <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
           member.gender === 'M' ? 'bg-primary/20' : 'bg-female-accent/20'
         }`}>
