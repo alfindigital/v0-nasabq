@@ -79,7 +79,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Anak',
         members: children.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Anak laki-laki' : 'Anak perempuan' 
+          relation: 'Anak'
         }))
       })
     }
@@ -90,7 +90,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Saudara',
         members: siblings.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Saudara laki-laki' : 'Saudara perempuan' 
+          relation: 'Saudara'
         }))
       })
     }
@@ -122,7 +122,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Cucu',
         members: grandchildren.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Cucu laki-laki' : 'Cucu perempuan' 
+          relation: 'Cucu'
         }))
       })
     }
@@ -154,7 +154,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Menantu',
         members: childSpouses.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Menantu laki-laki' : 'Menantu perempuan' 
+          relation: 'Menantu'
         }))
       })
     }
@@ -175,7 +175,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Ipar',
         members: siblingInLaws.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Ipar laki-laki' : 'Ipar perempuan' 
+          relation: 'Ipar'
         }))
       })
     }
@@ -207,7 +207,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Keponakan',
         members: nephews.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Keponakan laki-laki' : 'Keponakan perempuan' 
+          relation: 'Keponakan'
         }))
       })
     }
@@ -223,7 +223,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Sepupu',
         members: cousins.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Sepupu laki-laki' : 'Sepupu perempuan' 
+          relation: 'Sepupu'
         }))
       })
     }
@@ -240,7 +240,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         label: 'Besan',
         members: besans.map(m => ({ 
           member: m, 
-          relation: m.gender === 'M' ? 'Besan laki-laki' : 'Besan perempuan' 
+          relation: 'Besan'
         }))
       })
     }
@@ -456,7 +456,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                       <button
                         key={m.id}
                         onClick={() => onViewMember(m)}
-                        className="flex-shrink-0 p-3 bg-card border border-border rounded-xl hover:border-primary/30 active:scale-[0.98] transition-all"
+                        className="flex-shrink-0 w-20 p-3 bg-card border border-border rounded-xl hover:border-primary/30 active:scale-[0.98] transition-all"
                       >
                         <div className={`w-10 h-10 rounded-full flex items-center justify-center mx-auto ${
                           m.isDeceased 
@@ -469,12 +469,12 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                               : m.gender === 'M' ? 'text-primary' : 'text-female-accent'
                           }`} />
                         </div>
-                        <p className={`text-sm font-medium text-center mt-2 whitespace-nowrap max-w-[80px] truncate ${
+                        <p className={`text-xs font-medium text-center mt-2 truncate ${
                           m.isDeceased ? 'text-muted-foreground' : ''
                         }`}>
                           {m.nickname || m.name.split(' ')[0]}
                         </p>
-                        <p className="text-[10px] text-muted-foreground text-center mt-0.5">
+                        <p className="text-[10px] text-muted-foreground text-center mt-0.5 truncate">
                           {relation}
                         </p>
                       </button>
