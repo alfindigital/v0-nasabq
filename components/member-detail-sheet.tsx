@@ -201,10 +201,10 @@ export function MemberDetailSheet({
         onClose()
         setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: type }), 100)
       }}
-      className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-colors py-1"
+      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+      title={label}
     >
       <Plus className="w-4 h-4" />
-      <span>{label}</span>
     </button>
   )
 
@@ -386,40 +386,6 @@ export function MemberDetailSheet({
                 </div>
               </div>
 
-              {/* Quick Add Relationships */}
-              <div className="flex flex-wrap gap-2 pb-2 border-b border-border">
-                <button
-                  onClick={() => {
-                    onClose()
-                    setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'parent' }), 100)
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Orang Tua
-                </button>
-                <button
-                  onClick={() => {
-                    onClose()
-                    setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'spouse' }), 100)
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Pasangan
-                </button>
-                <button
-                  onClick={() => {
-                    onClose()
-                    setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'child' }), 100)
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                  Anak
-                </button>
-              </div>
-
               {/* Info details */}
               {(member.address || member.notes) && (
                 <div className="space-y-3">
@@ -441,28 +407,27 @@ export function MemberDetailSheet({
               {/* Family relationships */}
               <div className="space-y-4">
                 {/* Parents */}
-                {(parents.length > 0 || parents.length < 2) && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Orang Tua</h4>
-                    {parents.map(p => (
-                      <RelatedMemberRow 
-                        key={p.id} 
-                        relatedMember={p} 
-                        label={p.gender === 'M' ? 'Ayah' : 'Ibu'}
-                        canRemove
-                      />
-                    ))}
-                    {parents.length < 2 && (
-                      <div className="mt-1">
-                        <AddRelativeButton label="Tambah Orang Tua" type="parent" />
-                      </div>
-                    )}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Orang Tua</h4>
+                    {parents.length < 2 && <AddRelativeButton label="Tambah Orang Tua" type="parent" />}
                   </div>
-                )}
+                  {parents.map(p => (
+                    <RelatedMemberRow 
+                      key={p.id} 
+                      relatedMember={p} 
+                      label={p.gender === 'M' ? 'Ayah' : 'Ibu'}
+                      canRemove
+                    />
+                  ))}
+                </div>
 
                 {/* Spouse */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Pasangan</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pasangan</h4>
+                    {spouses.length === 0 && <AddRelativeButton label="Tambah Pasangan" type="spouse" />}
+                  </div>
                   {spouses.map(s => (
                     <RelatedMemberRow 
                       key={s.id} 
@@ -471,14 +436,14 @@ export function MemberDetailSheet({
                       canRemove
                     />
                   ))}
-                  {spouses.length === 0 && (
-                    <AddRelativeButton label="Tambah Pasangan" type="spouse" />
-                  )}
                 </div>
 
                 {/* Children */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Anak</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Anak</h4>
+                    <AddRelativeButton label="Tambah Anak" type="child" />
+                  </div>
                   {children.map(c => (
                     <RelatedMemberRow 
                       key={c.id} 
@@ -487,7 +452,6 @@ export function MemberDetailSheet({
                       canRemove
                     />
                   ))}
-                  <AddRelativeButton label="Tambah Anak" type="child" />
                 </div>
 
                 {/* Siblings */}
