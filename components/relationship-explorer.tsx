@@ -340,8 +340,8 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       <div className="p-4 pb-2">
         <div className="flex rounded-lg bg-muted p-1">
           {[
-            { id: 'between' as const, label: 'Antara dua orang' },
-            { id: 'map' as const, label: 'Peta keluargaku' },
+            { id: 'between' as const, label: 'Hubungan' },
+            { id: 'map' as const, label: 'Peta' },
           ].map(m => (
             <button
               key={m.id}
