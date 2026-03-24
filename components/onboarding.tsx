@@ -35,7 +35,6 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       birthPlace: null,
       isDeceased,
       deathYear: deathYear ? parseInt(deathYear) : null,
-      deathPlace: null,
       address: domicile.trim() || null,
       notes: notes.trim() || null,
       isSelf: true,

@@ -133,7 +133,6 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       birthPlace: null,
       isDeceased,
       deathYear: deathYear ? parseInt(deathYear) : null,
-      deathPlace: null,
       address: domicile.trim() || null,
       notes: notes.trim() || null,
       isSelf: false,

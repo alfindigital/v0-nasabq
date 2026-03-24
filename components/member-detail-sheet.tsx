@@ -49,7 +49,6 @@ export function MemberDetailSheet({
         birthYear: member.birthYear,
         isDeceased: member.isDeceased,
         deathYear: member.deathYear,
-        deathPlace: member.deathPlace,
         address: member.address,
         notes: member.notes,
       })
@@ -118,7 +117,6 @@ export function MemberDetailSheet({
       birthYear: editData.birthYear,
       isDeceased: editData.isDeceased,
       deathYear: editData.deathYear,
-      deathPlace: editData.deathPlace?.trim() || null,
       address: editData.address?.trim() || null,
       notes: editData.notes?.trim() || null,
     })
@@ -300,25 +298,14 @@ export function MemberDetailSheet({
                   <span className="text-sm">Sudah meninggal</span>
                 </button>
                 {editData.isDeceased && (
-                  <div className="mt-3 pl-7 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Tahun Wafat</label>
-                      <input
-                        type="number"
-                        value={editData.deathYear || ''}
-                        onChange={(e) => setEditData(d => ({ ...d, deathYear: e.target.value ? parseInt(e.target.value) : null }))}
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Tempat Wafat</label>
-                      <input
-                        type="text"
-                        value={editData.deathPlace || ''}
-                        onChange={(e) => setEditData(d => ({ ...d, deathPlace: e.target.value }))}
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
+                  <div className="mt-3 pl-7">
+                    <label className="block text-xs text-muted-foreground mb-1.5">Tahun Wafat</label>
+                    <input
+                      type="number"
+                      value={editData.deathYear || ''}
+                      onChange={(e) => setEditData(d => ({ ...d, deathYear: e.target.value ? parseInt(e.target.value) : null }))}
+                      className="w-full h-9 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
                   </div>
                 )}
               </div>
@@ -415,9 +402,9 @@ export function MemberDetailSheet({
                     {member.gender === 'M' ? 'Laki-laki' : 'Perempuan'}
                     {member.birthYear && ` · Lahir ${member.birthYear}`}
                   </p>
-                  {member.isDeceased && (member.deathYear || member.deathPlace) && (
+                  {member.isDeceased && member.deathYear && (
                     <p className="text-xs text-muted-foreground">
-                      Wafat {member.deathYear}{member.deathPlace && ` di ${member.deathPlace}`}
+                      Wafat {member.deathYear}
                     </p>
                   )}
                 </div>
