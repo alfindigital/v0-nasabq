@@ -104,7 +104,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
     }
 
     // Extended family
-    // Grandparents
     const grandparents: Member[] = []
     parents.forEach(p => {
       getParents(p.id).forEach(gp => {
@@ -121,7 +120,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Grandchildren
     const grandchildren: Member[] = []
     children.forEach(c => {
       getChildren(c.id).forEach(gc => {
@@ -138,7 +136,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // In-laws (mertua)
     const inLawParents: Member[] = []
     spouses.forEach(s => {
       getParents(s.id).forEach(p => {
@@ -155,7 +152,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Children's spouses (menantu)
     const childSpouses: Member[] = []
     children.forEach(c => {
       getSpouses(c.id).forEach(s => {
@@ -172,7 +168,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Siblings-in-law (ipar)
     const siblingInLaws: Member[] = []
     spouses.forEach(s => {
       getSiblings(s.id).forEach(sib => {
@@ -194,7 +189,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Uncles/Aunts
     const unclesAunts: Member[] = []
     parents.forEach(p => {
       getSiblings(p.id).forEach(sib => {
@@ -211,7 +205,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Nephews/Nieces
     const nephews: Member[] = []
     siblings.forEach(sib => {
       getChildren(sib.id).forEach(c => {
@@ -228,7 +221,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Cousins
     const cousins: Member[] = []
     unclesAunts.forEach(ua => {
       getChildren(ua.id).forEach(c => {
@@ -272,7 +264,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         onClick={() => setShowDropdown(!showDropdown)}
         className="w-full h-11 px-4 text-sm bg-card border border-border rounded-lg flex items-center justify-between"
       >
-        <span className={value ? 'text-foreground' : 'text-muted-foreground'}>
+        <span className={value ? 'text-foreground font-medium' : 'text-muted-foreground'}>
           {value?.name || placeholder}
         </span>
         <ChevronDown className="w-4 h-4 text-muted-foreground" />
@@ -379,12 +371,10 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             />
 
             {result && member1 && (
-              <div className="p-5 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
-                <div className="text-center space-y-2">
-                  <p className="font-display font-bold text-xl text-foreground">{member1.name}</p>
-                  <p className="text-sm text-muted-foreground">adalah</p>
-                  <p className="font-display font-bold text-2xl text-primary">{result.label}</p>
-                  <p className="text-sm text-muted-foreground">kamu</p>
+              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
+                <div className="text-center space-y-3">
+                  <p className="font-display font-bold text-2xl text-foreground">{member1.name}</p>
+                  <p className="font-display font-bold text-3xl text-primary">{result.label}mu</p>
                 </div>
               </div>
             )}
@@ -435,13 +425,11 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             />
 
             {result && member1 && member2 && (
-              <div className="p-5 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
-                <div className="text-center space-y-2">
+              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
+                <div className="text-center space-y-3">
                   <p className="font-display font-bold text-xl text-foreground">{member1.name}</p>
-                  <p className="text-sm text-muted-foreground">adalah</p>
                   <p className="font-display font-bold text-2xl text-primary">{result.label}</p>
-                  <p className="text-sm text-muted-foreground">dari</p>
-                  <p className="font-display font-bold text-xl text-foreground">{member2.name}</p>
+                  <p className="text-sm text-muted-foreground">dari <span className="font-medium text-foreground">{member2.name}</span></p>
                 </div>
               </div>
             )}

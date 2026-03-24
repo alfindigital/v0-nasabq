@@ -25,10 +25,12 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [lastTransform, setLastTransform] = useState({ x: 0, y: 0 })
   const [quickAction, setQuickAction] = useState<{ member: Member; x: number; y: number } | null>(null)
   const [expandedNodes, setExpandedNodes] = useState<Set<number>>(new Set())
   const [newNodeId, setNewNodeId] = useState<number | null>(null)
   const [initialized, setInitialized] = useState(false)
+  const [prevMemberCount, setPrevMemberCount] = useState(0)
   
   const canvasRef = useRef<HTMLDivElement>(null)
   
@@ -38,19 +40,20 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   // Constants for layout
   const NODE_WIDTH = 140
   const NODE_HEIGHT = 46
-  const H_GAP = 50 // Horizontal gap between unrelated nodes
-  const V_GAP = 100 // Vertical gap between generations
-  const SPOUSE_GAP = 16 // Small gap between spouses (horizontal)
+  const H_GAP = 60 // Horizontal gap between unrelated nodes
+  const V_GAP = 80 // Vertical gap between generations
+  const SPOUSE_GAP = 20 // Small gap between spouses (horizontal)
 
   // Build tree structure and calculate positions
-  // IMPORTANT: Parents are ABOVE (negative Y / lower gen number), Children are BELOW (positive Y / higher gen number)
+  // CORRECT: Parents (negative generation) at TOP, Children (positive generation) at BOTTOM
   const nodePositions = useMemo(() => {
     if (!self) return []
     
     const positions: NodePosition[] = []
     const processedIds = new Set<number>()
 
-    // Calculate generations: self = 0, parents = -1, grandparents = -2, children = +1, etc.
+    // Calculate generations: self = 0, parents = -1, children = +1
+    // Negative gen = ancestors (top), Positive gen = descendants (bottom)
     const memberGenerations = new Map<number, number>()
     
     const calculateGenerations = (id: number, gen: number, visited: Set<number>) => {
@@ -58,15 +61,21 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       visited.add(id)
       
       const currentGen = memberGenerations.get(id)
-      if (currentGen !== undefined && currentGen <= gen) return
+      // For ancestors (going up), we want the lowest (most negative) gen
+      // For descendants (going down), we want the highest (most positive) gen
+      if (currentGen !== undefined) {
+        if (gen < 0 && currentGen <= gen) return // Already have more ancestral
+        if (gen > 0 && currentGen >= gen) return // Already have more descendant
+        if (gen === 0 && currentGen !== undefined) return // Already set at base
+      }
       
       memberGenerations.set(id, gen)
       
-      // Parents are ABOVE (gen - 1)
+      // Parents are ABOVE (gen - 1 = more negative = higher up visually)
       const parents = getParents(id)
       parents.forEach(p => calculateGenerations(p.id, gen - 1, new Set(visited)))
       
-      // Children are BELOW (gen + 1)
+      // Children are BELOW (gen + 1 = more positive = lower down visually)
       const children = getChildren(id)
       children.forEach(c => calculateGenerations(c.id, gen + 1, new Set(visited)))
       
@@ -91,15 +100,18 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       }
     })
 
-    // Position nodes by generation (sorted from top/ancestors to bottom/descendants)
+    // Sort generations: negative (ancestors) first, then 0 (self), then positive (descendants)
+    // This means the SMALLEST number is at the TOP
     const sortedGens = Array.from(generations.keys()).sort((a, b) => a - b)
+    const minGen = sortedGens.length > 0 ? sortedGens[0] : 0
     
-    sortedGens.forEach(gen => {
+    // Position nodes by generation
+    sortedGens.forEach((gen, genIndex) => {
       const genMembers = generations.get(gen)!
       const processedInGen = new Set<number>()
       let xOffset = 0
       
-      // Sort to prioritize self and keep families together
+      // Sort to prioritize self
       const sortedMembers = [...genMembers].sort((a, b) => {
         if (a.isSelf) return -1
         if (b.isSelf) return 1
@@ -116,18 +128,20 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
         const isVisible = expandedNodes.size === 0 || 
                           member.isSelf || 
                           expandedNodes.has(member.id) ||
-                          // Visible if any parent is expanded
                           getParents(member.id).some(p => expandedNodes.has(p.id)) ||
-                          // Visible if spouse's parent is expanded
                           spouses.some(s => getParents(s.id).some(p => expandedNodes.has(p.id)))
 
         if (!isVisible && gen !== 0) return
+
+        // Y position: genIndex determines vertical position
+        // TOP of tree is genIndex=0 (ancestors), BOTTOM is highest genIndex (descendants)
+        const yPos = genIndex * (NODE_HEIGHT + V_GAP)
 
         // Position member
         positions.push({
           id: member.id,
           x: xOffset,
-          y: gen * (NODE_HEIGHT + V_GAP),
+          y: yPos,
           generation: gen,
           spouseId: spouses[0]?.id,
           isSpouse: false
@@ -142,7 +156,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
             positions.push({
               id: spouse.id,
               x: xOffset,
-              y: gen * (NODE_HEIGHT + V_GAP),
+              y: yPos,
               generation: gen,
               spouseId: member.id,
               isSpouse: true
@@ -173,10 +187,11 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       const allIds = new Set<number>(members.map(m => m.id))
       setExpandedNodes(allIds)
       setInitialized(true)
+      setPrevMemberCount(members.length)
     }
   }, [self, members, initialized])
 
-  // Auto-fit and center on first render or when new members are added
+  // Auto-fit and center
   const handleFitToScreen = useCallback(() => {
     if (!canvasRef.current || nodePositions.length === 0) return
     
@@ -195,27 +210,42 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       1.2
     )
     
-    // Center the tree in view
     const centerX = (minX + maxX) / 2
     const centerY = (minY + maxY) / 2
     
-    setTransform({
+    const newTransform = {
       x: rect.width / 2 - centerX * scale,
       y: rect.height / 2 - centerY * scale,
       scale: Math.max(0.4, Math.min(scale, 1.2))
-    })
+    }
+    
+    setTransform(newTransform)
+    setLastTransform({ x: newTransform.x, y: newTransform.y })
   }, [nodePositions])
 
+  // Initial fit
   useEffect(() => {
     if (initialized && nodePositions.length > 0 && canvasRef.current) {
       handleFitToScreen()
     }
   }, [initialized, handleFitToScreen])
 
+  // Detect new member and expand + mark
+  useEffect(() => {
+    if (members.length > prevMemberCount && prevMemberCount > 0) {
+      const newMember = members[members.length - 1]
+      if (newMember) {
+        setNewNodeId(newMember.id)
+        setExpandedNodes(prev => new Set([...prev, newMember.id]))
+      }
+    }
+    setPrevMemberCount(members.length)
+  }, [members.length, prevMemberCount, members])
+
   // Clear new node highlight after animation
   useEffect(() => {
     if (newNodeId !== null) {
-      const timer = setTimeout(() => setNewNodeId(null), 1000)
+      const timer = setTimeout(() => setNewNodeId(null), 1500)
       return () => clearTimeout(timer)
     }
   }, [newNodeId])
@@ -226,21 +256,27 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     if (target.closest('.tree-node') || target.closest('.quick-action')) return
     
     setIsDragging(true)
-    setDragStart({ x: e.clientX - transform.x, y: e.clientY - transform.y })
+    setDragStart({ x: e.clientX, y: e.clientY })
+    setLastTransform({ x: transform.x, y: transform.y })
     e.preventDefault()
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging) {
+      const dx = e.clientX - dragStart.x
+      const dy = e.clientY - dragStart.y
       setTransform(t => ({ 
         ...t, 
-        x: e.clientX - dragStart.x, 
-        y: e.clientY - dragStart.y 
+        x: lastTransform.x + dx, 
+        y: lastTransform.y + dy 
       }))
     }
   }
 
   const handleMouseUp = () => {
+    if (isDragging) {
+      setLastTransform({ x: transform.x, y: transform.y })
+    }
     setIsDragging(false)
   }
 
@@ -252,22 +288,28 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     if (e.touches.length === 1) {
       const touch = e.touches[0]
       setIsDragging(true)
-      setDragStart({ x: touch.clientX - transform.x, y: touch.clientY - transform.y })
+      setDragStart({ x: touch.clientX, y: touch.clientY })
+      setLastTransform({ x: transform.x, y: transform.y })
     }
   }
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isDragging && e.touches.length === 1) {
       const touch = e.touches[0]
+      const dx = touch.clientX - dragStart.x
+      const dy = touch.clientY - dragStart.y
       setTransform(t => ({ 
         ...t, 
-        x: touch.clientX - dragStart.x, 
-        y: touch.clientY - dragStart.y 
+        x: lastTransform.x + dx, 
+        y: lastTransform.y + dy 
       }))
     }
   }
 
   const handleTouchEnd = () => {
+    if (isDragging) {
+      setLastTransform({ x: transform.x, y: transform.y })
+    }
     setIsDragging(false)
   }
 
@@ -337,7 +379,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       const next = new Set(prev)
       if (next.has(id)) {
         next.delete(id)
-        // Also collapse all descendants
         const descendants = getChildren(id)
         descendants.forEach(d => next.delete(d.id))
       } else {
@@ -350,19 +391,18 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   // Toggle all expand/collapse
   const handleToggleAll = () => {
     if (expandedNodes.size === members.length) {
-      // Collapse all except self
       setExpandedNodes(new Set(self ? [self.id] : []))
     } else {
-      // Expand all
       setExpandedNodes(new Set(members.map(m => m.id)))
     }
   }
 
   // Generate connector lines SVG
-  // IMPORTANT: Lines go DOWN from parents to children
+  // Lines go DOWN from parents to children
   const renderConnectors = () => {
     const lines: JSX.Element[] = []
     const posMap = new Map(nodePositions.map(p => [p.id, p]))
+    const processedChildConnections = new Set<string>()
     
     nodePositions.forEach(pos => {
       const member = members.find(m => m.id === pos.id)
@@ -386,111 +426,143 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
                 y2={y}
                 stroke="var(--primary)"
                 strokeWidth="2"
-                strokeOpacity="0.5"
+                strokeOpacity="0.6"
               />
-              {/* Marriage indicator */}
               <circle
                 cx={midX}
                 cy={y}
                 r="4"
                 fill="var(--primary)"
-                fillOpacity="0.6"
+                fillOpacity="0.7"
               />
             </g>
           )
         }
       }
       
-      // Parent to child connectors (lines going DOWN from parent to children)
-      const children = getChildren(pos.id)
-      const visibleChildren = children.filter(c => posMap.has(c.id))
-      
-      if (visibleChildren.length > 0 && expandedNodes.has(pos.id)) {
+      // Parent to child connectors (lines going DOWN)
+      // Only draw if this node is NOT a spouse (to avoid duplicate lines)
+      if (!pos.isSpouse) {
+        const children = getChildren(pos.id)
         const spouse = getSpouses(pos.id)[0]
         const spousePos = spouse ? posMap.get(spouse.id) : null
         
-        // Starting point (bottom center of parent, or center between couple)
-        let startX = pos.x + NODE_WIDTH / 2
-        if (spousePos && !pos.isSpouse) {
-          // Center between couple
-          startX = (pos.x + NODE_WIDTH + spousePos.x) / 2
-        }
-        const startY = pos.y + NODE_HEIGHT // Bottom of parent
-        
-        // Get visible children positions
-        const childPositions = visibleChildren
-          .map(c => posMap.get(c.id))
-          .filter((cp): cp is NodePosition => cp !== undefined)
-          .sort((a, b) => a.x - b.x) // Sort by X position for proper line drawing
-        
-        if (childPositions.length > 0) {
-          const childY = childPositions[0].y // Top of children
-          const midY = startY + (childY - startY) / 2
-          
-          // Vertical line down from parent(s) to midpoint
-          lines.push(
-            <line
-              key={`down-${pos.id}`}
-              x1={startX}
-              y1={startY}
-              x2={startX}
-              y2={midY}
-              stroke="var(--primary)"
-              strokeWidth="2"
-              strokeOpacity="0.4"
-            />
-          )
-          
-          // Horizontal distribution bar if multiple children
-          const leftX = Math.min(...childPositions.map(cp => cp.x + NODE_WIDTH / 2))
-          const rightX = Math.max(...childPositions.map(cp => cp.x + NODE_WIDTH / 2))
-          
-          if (childPositions.length > 1) {
-            lines.push(
-              <line
-                key={`bar-${pos.id}`}
-                x1={leftX}
-                y1={midY}
-                x2={rightX}
-                y2={midY}
-                stroke="var(--primary)"
-                strokeWidth="2"
-                strokeOpacity="0.4"
-              />
-            )
-          }
-          
-          // Vertical connector from startX to the bar (if startX is not on the bar)
-          if (childPositions.length > 1 && (startX < leftX || startX > rightX)) {
-            lines.push(
-              <line
-                key={`connect-${pos.id}`}
-                x1={startX}
-                y1={midY}
-                x2={startX < leftX ? leftX : rightX}
-                y2={midY}
-                stroke="var(--primary)"
-                strokeWidth="2"
-                strokeOpacity="0.4"
-              />
-            )
-          }
-          
-          // Lines from midpoint down to each child
-          childPositions.forEach(cp => {
-            lines.push(
-              <line
-                key={`child-${pos.id}-${cp.id}`}
-                x1={cp.x + NODE_WIDTH / 2}
-                y1={midY}
-                x2={cp.x + NODE_WIDTH / 2}
-                y2={cp.y}
-                stroke="var(--primary)"
-                strokeWidth="2"
-                strokeOpacity="0.4"
-              />
-            )
+        // Combine children from both spouses if applicable
+        let allChildren = [...children]
+        if (spouse) {
+          const spouseChildren = getChildren(spouse.id)
+          spouseChildren.forEach(sc => {
+            if (!allChildren.some(c => c.id === sc.id)) {
+              allChildren.push(sc)
+            }
           })
+        }
+        
+        const visibleChildren = allChildren.filter(c => {
+          const key = `${Math.min(pos.id, c.id)}-${Math.max(pos.id, c.id)}`
+          if (processedChildConnections.has(key)) return false
+          return posMap.has(c.id)
+        })
+        
+        if (visibleChildren.length > 0 && expandedNodes.has(pos.id)) {
+          // Starting point (bottom center of parent, or center between couple)
+          let startX = pos.x + NODE_WIDTH / 2
+          if (spousePos) {
+            startX = (pos.x + NODE_WIDTH + spousePos.x) / 2
+          }
+          const startY = pos.y + NODE_HEIGHT
+          
+          // Get visible children positions
+          const childPositions = visibleChildren
+            .map(c => posMap.get(c.id))
+            .filter((cp): cp is NodePosition => cp !== undefined)
+            .sort((a, b) => a.x - b.x)
+          
+          if (childPositions.length > 0) {
+            const childY = childPositions[0].y
+            const midY = startY + (childY - startY) / 2
+            
+            // Vertical line down from parent(s) to midpoint
+            lines.push(
+              <line
+                key={`down-${pos.id}`}
+                x1={startX}
+                y1={startY}
+                x2={startX}
+                y2={midY}
+                stroke="var(--primary)"
+                strokeWidth="2"
+                strokeOpacity="0.4"
+              />
+            )
+            
+            // Horizontal distribution bar if multiple children
+            const leftX = Math.min(...childPositions.map(cp => cp.x + NODE_WIDTH / 2))
+            const rightX = Math.max(...childPositions.map(cp => cp.x + NODE_WIDTH / 2))
+            
+            if (childPositions.length > 1) {
+              lines.push(
+                <line
+                  key={`bar-${pos.id}`}
+                  x1={leftX}
+                  y1={midY}
+                  x2={rightX}
+                  y2={midY}
+                  stroke="var(--primary)"
+                  strokeWidth="2"
+                  strokeOpacity="0.4"
+                />
+              )
+              
+              // Connect startX to the bar if needed
+              if (startX < leftX) {
+                lines.push(
+                  <line
+                    key={`connect-l-${pos.id}`}
+                    x1={startX}
+                    y1={midY}
+                    x2={leftX}
+                    y2={midY}
+                    stroke="var(--primary)"
+                    strokeWidth="2"
+                    strokeOpacity="0.4"
+                  />
+                )
+              } else if (startX > rightX) {
+                lines.push(
+                  <line
+                    key={`connect-r-${pos.id}`}
+                    x1={startX}
+                    y1={midY}
+                    x2={rightX}
+                    y2={midY}
+                    stroke="var(--primary)"
+                    strokeWidth="2"
+                    strokeOpacity="0.4"
+                  />
+                )
+              }
+            }
+            
+            // Lines from midpoint down to each child
+            childPositions.forEach(cp => {
+              const key = `${Math.min(pos.id, cp.id)}-${Math.max(pos.id, cp.id)}`
+              processedChildConnections.add(key)
+              
+              lines.push(
+                <line
+                  key={`child-${pos.id}-${cp.id}`}
+                  x1={cp.x + NODE_WIDTH / 2}
+                  y1={midY}
+                  x2={cp.x + NODE_WIDTH / 2}
+                  y2={cp.y}
+                  stroke="var(--primary)"
+                  strokeWidth="2"
+                  strokeOpacity="0.4"
+                />
+              )
+            })
+          }
         }
       }
     })
@@ -548,7 +620,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
         style={{
           transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.scale})`,
           transformOrigin: '0 0',
-          transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          transition: isDragging ? 'none' : 'transform 0.15s ease-out'
         }}
       >
         {/* Connectors SVG layer */}

@@ -21,26 +21,6 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
   const { members, exportData, importData, clearAllData } = useNasabStore()
   const self = members.find(m => m.isSelf)
 
-  // Statistics
-  const maleCount = members.filter(m => m.gender === 'M').length
-  const femaleCount = members.filter(m => m.gender === 'F').length
-  const deceasedCount = members.filter(m => m.isDeceased).length
-  const spousePairs = Math.floor(members.reduce((acc, m) => 
-    acc + m.relationships.filter(r => r.type === 'spouse').length, 0
-  ) / 2)
-  
-  // Calculate generations (simple approximation)
-  const getGeneration = (memberId: number, visited = new Set<number>()): number => {
-    if (visited.has(memberId)) return 0
-    visited.add(memberId)
-    const member = members.find(m => m.id === memberId)
-    if (!member) return 0
-    const parents = member.relationships.filter(r => r.type === 'parent')
-    if (parents.length === 0) return 1
-    return 1 + Math.max(...parents.map(p => getGeneration(p.targetId, visited)))
-  }
-  const generations = self ? getGeneration(self.id) : 1
-
   const handleExport = () => {
     const data = exportData()
     const json = JSON.stringify(data, null, 2)
@@ -228,35 +208,6 @@ export function MenuDrawer({ open, onClose, darkMode, onToggleDarkMode, onViewSe
                 <Trash2 className="w-5 h-5" />
                 <span className="text-sm font-medium">Hapus Semua Data</span>
               </button>
-            </div>
-          </section>
-
-          {/* Statistics Section */}
-          <section>
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Statistik</h3>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-lg font-display font-bold text-primary">{members.length}</p>
-                <p className="text-xs text-muted-foreground">Total Anggota</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-lg font-display font-bold">{generations}</p>
-                <p className="text-xs text-muted-foreground">Generasi</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm font-display font-bold">{maleCount} / {femaleCount}</p>
-                <p className="text-xs text-muted-foreground">L / P</p>
-              </div>
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-lg font-display font-bold">{spousePairs}</p>
-                <p className="text-xs text-muted-foreground">Keluarga Inti</p>
-              </div>
-              {deceasedCount > 0 && (
-                <div className="p-3 bg-muted rounded-lg col-span-2">
-                  <p className="text-lg font-display font-bold">{deceasedCount}</p>
-                  <p className="text-xs text-muted-foreground">Almarhum/ah</p>
-                </div>
-              )}
             </div>
           </section>
 

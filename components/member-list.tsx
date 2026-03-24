@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { ChevronRight, User, Users, Heart, UserCheck } from 'lucide-react'
+import { ChevronRight, User, Users, Heart, UserCheck, Calendar, MapPin } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
@@ -50,7 +50,6 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
     }
 
     return [...members].sort((a, b) => {
-      // Self first
       if (a.isSelf) return -1
       if (b.isSelf) return 1
       const genA = getGeneration(a.id)
@@ -63,37 +62,47 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Stats Header - Sticky */}
-      <div className="sticky top-0 z-10 bg-background border-b border-border">
-        <div className="p-4">
-          <div className="grid grid-cols-4 gap-2">
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
+        <div className="p-3">
+          <div className="grid grid-cols-5 gap-1.5">
             <div className="p-2 bg-card rounded-lg text-center">
               <div className="flex items-center justify-center gap-1">
-                <Users className="w-3.5 h-3.5 text-primary" />
-                <span className="font-display font-bold text-lg text-primary">{stats.total}</span>
+                <Users className="w-3 h-3 text-primary" />
+                <span className="font-display font-bold text-base text-primary">{stats.total}</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">Anggota</p>
+              <p className="text-[9px] text-muted-foreground">Total</p>
+            </div>
+            <div className="p-2 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-sm text-foreground">{stats.maleCount}</span>
+              <p className="text-[9px] text-muted-foreground">Laki-laki</p>
+            </div>
+            <div className="p-2 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-sm text-female-accent">{stats.femaleCount}</span>
+              <p className="text-[9px] text-muted-foreground">Perempuan</p>
             </div>
             <div className="p-2 bg-card rounded-lg text-center">
               <div className="flex items-center justify-center gap-1">
-                <span className="font-display font-bold text-sm">{stats.maleCount}/{stats.femaleCount}</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">L / P</p>
-            </div>
-            <div className="p-2 bg-card rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Heart className="w-3.5 h-3.5 text-female-accent" />
+                <Heart className="w-3 h-3 text-female-accent" />
                 <span className="font-display font-bold text-sm">{stats.spousePairs}</span>
               </div>
-              <p className="text-[10px] text-muted-foreground">Keluarga</p>
+              <p className="text-[9px] text-muted-foreground">Keluarga</p>
             </div>
             <div className="p-2 bg-card rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1">
-                <UserCheck className="w-3.5 h-3.5 text-gold" />
-                <span className="font-display font-bold text-sm">{stats.generations}</span>
-              </div>
-              <p className="text-[10px] text-muted-foreground">Generasi</p>
+              <span className="font-display font-bold text-sm text-gold">{stats.generations}</span>
+              <p className="text-[9px] text-muted-foreground">Generasi</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Table Header */}
+      <div className="sticky top-[76px] z-10 bg-muted/80 backdrop-blur-sm border-b border-border">
+        <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="col-span-4">Nama</div>
+          <div className="col-span-2 text-center">L/P</div>
+          <div className="col-span-2 text-center">Lahir</div>
+          <div className="col-span-3">Hubungan</div>
+          <div className="col-span-1"></div>
         </div>
       </div>
 
@@ -104,7 +113,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
             <p className="text-sm text-muted-foreground">Belum ada anggota keluarga.</p>
           </div>
         ) : (
-          <div className="divide-y divide-border">
+          <div className="divide-y divide-border/50">
             {sortedMembers.map(member => {
               const relationLabel = self && !member.isSelf
                 ? getRelationToSelf(member.id, self.id, members, getParents, getChildren, getSpouses)
@@ -117,78 +126,61 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
                 <button
                   key={member.id}
                   onClick={() => onViewMember(member)}
-                  className="w-full p-3 flex items-center gap-3 hover:bg-muted/50 active:bg-muted transition-colors text-left"
+                  className="w-full grid grid-cols-12 gap-1 px-3 py-2.5 items-center hover:bg-muted/50 active:bg-muted transition-colors text-left"
                 >
-                  {/* Avatar */}
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
-                  } ${member.isDeceased ? 'grayscale opacity-60' : ''}`}>
-                    <User className={`w-5 h-5 ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
-                  </div>
-
-                  {/* Main Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-display font-semibold text-sm truncate">
-                        {member.name}
-                      </span>
+                  {/* Name Column */}
+                  <div className="col-span-4 flex items-center gap-2 min-w-0">
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                    } ${member.isDeceased ? 'grayscale opacity-60' : ''}`}>
+                      <User className={`w-3.5 h-3.5 ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className={`text-xs font-medium truncate ${member.isDeceased ? 'text-muted-foreground' : ''}`}>
+                        {member.nickname || member.name.split(' ')[0]}
+                      </p>
                       {member.isSelf && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-gold/20 text-gold rounded flex-shrink-0">
+                        <span className="px-1 py-0.5 text-[8px] font-semibold bg-gold/20 text-gold rounded">
                           Kamu
                         </span>
                       )}
                     </div>
-                    
-                    {/* Details row */}
-                    <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
-                      <span>{member.gender === 'M' ? 'L' : 'P'}</span>
-                      {member.birthYear && (
-                        <>
-                          <span className="text-border">|</span>
-                          <span>{member.birthYear}</span>
-                        </>
-                      )}
-                      {member.address && (
-                        <>
-                          <span className="text-border">|</span>
-                          <span className="truncate max-w-[80px]">{member.address}</span>
-                        </>
-                      )}
-                      {member.isDeceased && (
-                        <>
-                          <span className="text-border">|</span>
-                          <span className="text-muted-foreground/60">{member.gender === 'M' ? 'Alm' : 'Almh'}</span>
-                        </>
-                      )}
-                    </div>
+                  </div>
 
-                    {/* Relationship info */}
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {relationLabel && (
-                        <span className="px-1.5 py-0.5 text-[10px] font-medium bg-primary/10 text-primary rounded">
-                          {relationLabel}
-                        </span>
-                      )}
-                      {parents.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {parents.length === 1 ? `Anak ${parents[0].nickname || parents[0].name.split(' ')[0]}` : `Anak ${parents[0].nickname || parents[0].name.split(' ')[0]} & ${parents[1].nickname || parents[1].name.split(' ')[0]}`}
-                        </span>
-                      )}
-                      {spouses.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {spouses[0].gender === 'M' ? 'Istri' : 'Suami'} {spouses[0].nickname || spouses[0].name.split(' ')[0]}
-                        </span>
-                      )}
-                      {children.length > 0 && (
-                        <span className="text-[10px] text-muted-foreground">
-                          {children.length} anak
-                        </span>
-                      )}
-                    </div>
+                  {/* Gender */}
+                  <div className="col-span-2 text-center">
+                    <span className={`text-xs font-medium ${member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`}>
+                      {member.gender === 'M' ? 'L' : 'P'}
+                    </span>
+                    {member.isDeceased && (
+                      <span className="text-[9px] text-muted-foreground block">{member.gender === 'M' ? 'Alm' : 'Almh'}</span>
+                    )}
+                  </div>
+
+                  {/* Birth Year */}
+                  <div className="col-span-2 text-center">
+                    <span className="text-xs text-muted-foreground">
+                      {member.birthYear || '-'}
+                    </span>
+                  </div>
+
+                  {/* Relationship */}
+                  <div className="col-span-3">
+                    {relationLabel ? (
+                      <span className="px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded truncate block">
+                        {relationLabel}
+                      </span>
+                    ) : member.isSelf ? (
+                      <span className="text-[9px] text-muted-foreground">-</span>
+                    ) : (
+                      <span className="text-[9px] text-muted-foreground/50">-</span>
+                    )}
                   </div>
 
                   {/* Chevron */}
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <div className="col-span-1 flex justify-end">
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                  </div>
                 </button>
               )
             })}
