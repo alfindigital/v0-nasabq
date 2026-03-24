@@ -24,7 +24,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
   const { members, getParents, getChildren, getSpouses, getSiblings } = useNasabStore()
   const self = members.find(m => m.isSelf)
 
-  // Filter members for dropdowns
   const filterMembers = (search: string, excludeId?: number) => {
     return members.filter(m => {
       if (excludeId && m.id === excludeId) return false
@@ -41,7 +40,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
   const member1 = selectedMember1 ? members.find(m => m.id === selectedMember1) : null
   const member2 = selectedMember2 ? members.find(m => m.id === selectedMember2) : null
 
-  // Calculate relationship result
   const result = useMemo(() => {
     if (mode === 'who-is' && selectedMember1 && self) {
       return getRelationshipLabel(self.id, selectedMember1, members, getParents, getChildren, getSpouses)
@@ -52,13 +50,11 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
     return null
   }, [mode, selectedMember1, selectedMember2, self, members, getParents, getChildren, getSpouses])
 
-  // Family map data
   const familyMap = useMemo(() => {
     if (mode !== 'map' || !self) return null
 
     const categories: { label: string; members: { member: Member; relation: string }[] }[] = []
 
-    // Direct relationships
     const parents = getParents(self.id)
     if (parents.length > 0) {
       categories.push({
@@ -103,7 +99,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
       })
     }
 
-    // Extended family
     const grandparents: Member[] = []
     parents.forEach(p => {
       getParents(p.id).forEach(gp => {
@@ -355,7 +350,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
         </div>
       </div>
 
-      {/* Content based on mode */}
+      {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {mode === 'who-is' && (
           <div className="space-y-4 pt-2">
@@ -371,18 +366,23 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             />
 
             {result && member1 && (
-              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
-                <div className="text-center space-y-3">
-                  <p className="font-display font-bold text-2xl text-foreground">{member1.name}</p>
-                  <p className="font-display font-bold text-3xl text-primary">{result.label}mu</p>
+              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                <div className="text-center space-y-2">
+                  {/* Name - prominent */}
+                  <p className="font-display font-bold text-2xl text-foreground">
+                    {member1.nickname || member1.name}
+                  </p>
+                  {/* Relationship status - very prominent */}
+                  <p className="font-display font-bold text-3xl text-primary">
+                    {result.label}mu
+                  </p>
                 </div>
               </div>
             )}
 
             {selectedMember1 && !result && (
               <div className="p-4 bg-muted rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Belum terhubung.</p>
-                <p className="text-xs text-muted-foreground mt-1">Tambahkan data penghubung.</p>
+                <p className="text-sm text-muted-foreground">Tidak terhubung</p>
               </div>
             )}
 
@@ -425,18 +425,27 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             />
 
             {result && member1 && member2 && (
-              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-in fade-in zoom-in-95 duration-300">
-                <div className="text-center space-y-3">
-                  <p className="font-display font-bold text-xl text-foreground">{member1.name}</p>
-                  <p className="font-display font-bold text-2xl text-primary">{result.label}</p>
-                  <p className="text-sm text-muted-foreground">dari <span className="font-medium text-foreground">{member2.name}</span></p>
+              <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20">
+                <div className="text-center space-y-2">
+                  {/* Person 1 name - prominent */}
+                  <p className="font-display font-bold text-xl text-foreground">
+                    {member1.nickname || member1.name}
+                  </p>
+                  {/* Relationship status - very prominent */}
+                  <p className="font-display font-bold text-2xl text-primary">
+                    {result.label}
+                  </p>
+                  {/* Person 2 name */}
+                  <p className="text-sm text-muted-foreground">
+                    dari <span className="font-semibold text-foreground">{member2.nickname || member2.name}</span>
+                  </p>
                 </div>
               </div>
             )}
 
             {selectedMember1 && selectedMember2 && !result && (
               <div className="p-4 bg-muted rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Belum terhubung.</p>
+                <p className="text-sm text-muted-foreground">Tidak terhubung</p>
               </div>
             )}
           </div>
@@ -492,7 +501,6 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             ) : (
               <div className="p-4 bg-muted rounded-xl text-center">
                 <p className="text-sm text-muted-foreground">Belum ada hubungan keluarga.</p>
-                <p className="text-xs text-muted-foreground mt-1">Tambahkan anggota keluarga untuk melihat peta.</p>
               </div>
             )}
           </div>

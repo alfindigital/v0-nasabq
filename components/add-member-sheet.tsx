@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import { X, Search, ChevronDown, User, Plus, ChevronRight } from 'lucide-react'
+import { X, Search, User, Plus, ChevronRight, ChevronDown } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import type { Gender } from '@/lib/types'
 
@@ -15,11 +15,9 @@ interface AddMemberSheetProps {
   onAdded: (name: string) => void
 }
 
-type Tab = 'existing' | 'new'
-
 export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberSheetProps) {
-  const [activeTab, setActiveTab] = useState<Tab>('existing')
-  const [existingSearch, setExistingSearch] = useState('')
+  const [showNewForm, setShowNewForm] = useState(false)
+  const [search, setSearch] = useState('')
   
   // Form states
   const [name, setName] = useState('')
@@ -28,7 +26,6 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
   const [birthYear, setBirthYear] = useState('')
   const [isDeceased, setIsDeceased] = useState(false)
   const [deathYear, setDeathYear] = useState('')
-  const [deathPlace, setDeathPlace] = useState('')
   const [domicile, setDomicile] = useState('')
   const [notes, setNotes] = useState('')
   const [linkTo, setLinkTo] = useState<number | null>(null)
@@ -36,8 +33,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
   const [showLinkDropdown, setShowLinkDropdown] = useState(false)
   const [linkSearch, setLinkSearch] = useState('')
   
-  const nameInputRef = useRef<HTMLInputElement>(null)
-  const { members, addMember, addRelationship, getMember, getParents } = useNasabStore()
+  const { members, addMember, addRelationship, getMember } = useNasabStore()
 
   // Reset form when opening/closing
   useEffect(() => {
@@ -48,40 +44,38 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       setBirthYear('')
       setIsDeceased(false)
       setDeathYear('')
-      setDeathPlace('')
       setDomicile('')
       setNotes('')
+      setSearch('')
       setLinkSearch('')
-      setExistingSearch('')
       setShowLinkDropdown(false)
       
-      // Pre-fill from context
       if (context?.targetId) {
         setLinkTo(context.targetId)
         setLinkType(context.relationshipType || null)
-        // Default to existing tab if we have context and other members
-        setActiveTab(members.length > 1 ? 'existing' : 'new')
+        // Show list view if we have context and other members
+        setShowNewForm(members.length <= 1)
       } else {
         setLinkTo(null)
         setLinkType(null)
-        setActiveTab('new')
+        setShowNewForm(true)
       }
     }
   }, [open, context, members.length])
 
   const targetMember = linkTo ? members.find(m => m.id === linkTo) : null
   
-  // Filter for existing member selection (exclude target and already related)
+  // Filter existing members for selection
   const existingMembers = members.filter(m => {
     if (context?.targetId && m.id === context.targetId) return false
-    if (existingSearch.trim()) {
-      const query = existingSearch.toLowerCase()
-      return m.name.toLowerCase().includes(query) || m.nickname?.toLowerCase().includes(query)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      return m.name.toLowerCase().includes(q) || m.nickname?.toLowerCase().includes(q)
     }
     return true
   })
   
-  const filteredMembers = members.filter(m => 
+  const filteredLinkMembers = members.filter(m => 
     m.name.toLowerCase().includes(linkSearch.toLowerCase()) ||
     m.nickname?.toLowerCase().includes(linkSearch.toLowerCase())
   )
@@ -93,12 +87,9 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     const selected = getMember(memberId)
     if (!selected) return
 
-    // Add the relationship correctly
     if (context.relationshipType === 'child') {
-      // Selected member becomes child of target
       addRelationship(memberId, context.targetId, 'parent')
     } else if (context.relationshipType === 'parent') {
-      // Selected member becomes parent of target
       addRelationship(memberId, context.targetId, 'child')
     } else if (context.relationshipType === 'spouse') {
       addRelationship(memberId, context.targetId, 'spouse')
@@ -119,19 +110,16 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       birthPlace: null,
       isDeceased,
       deathYear: deathYear ? parseInt(deathYear) : null,
-      deathPlace: deathPlace.trim() || null,
+      deathPlace: null,
       address: domicile.trim() || null,
       notes: notes.trim() || null,
       isSelf: false,
     })
 
-    // Add relationship if specified
     if (linkTo && linkType) {
       if (linkType === 'child') {
-        // New member is child of target (target is parent)
         addRelationship(newId, linkTo, 'parent')
       } else if (linkType === 'parent') {
-        // New member is parent of target (target is child)
         addRelationship(newId, linkTo, 'child')
       } else if (linkType === 'spouse') {
         addRelationship(newId, linkTo, 'spouse')
@@ -143,24 +131,13 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
   const isValid = name.trim() && gender
 
-  const getRelationshipLabel = () => {
-    if (!targetMember || !linkType) return ''
-    const targetName = targetMember.nickname || targetMember.name.split(' ')[0]
-    switch (linkType) {
-      case 'child': return `adalah anak dari ${targetName}`
-      case 'parent': return `adalah orang tua dari ${targetName}`
-      case 'spouse': return `adalah pasangan dari ${targetName}`
-      default: return ''
-    }
-  }
-
   const getContextLabel = () => {
-    if (!targetMember || !context?.relationshipType) return ''
+    if (!targetMember || !context?.relationshipType) return 'Tambah Anggota'
     switch (context.relationshipType) {
-      case 'child': return `Anak dari ${targetMember.name}`
-      case 'parent': return `Orang tua dari ${targetMember.name}`
-      case 'spouse': return `Pasangan dari ${targetMember.name}`
-      default: return ''
+      case 'child': return `Tambah Anak dari ${targetMember.nickname || targetMember.name.split(' ')[0]}`
+      case 'parent': return `Tambah Orang Tua dari ${targetMember.nickname || targetMember.name.split(' ')[0]}`
+      case 'spouse': return `Tambah Pasangan dari ${targetMember.nickname || targetMember.name.split(' ')[0]}`
+      default: return 'Tambah Anggota'
     }
   }
 
@@ -168,10 +145,8 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
   return (
     <div className="fixed inset-0 z-50">
-      {/* Backdrop */}
       <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       
-      {/* Sheet */}
       <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[20px] sheet-up max-h-[90vh] overflow-hidden flex flex-col">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
@@ -181,10 +156,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
         {/* Header */}
         <div className="px-5 py-3 flex items-center justify-between border-b border-border">
           <div>
-            <h2 className="font-display font-semibold text-[17px]">Tambah Anggota</h2>
-            {context && targetMember && (
-              <p className="text-xs text-muted-foreground mt-0.5">{getContextLabel()}</p>
-            )}
+            <h2 className="font-display font-semibold text-[17px]">{getContextLabel()}</h2>
           </div>
           <button
             onClick={onClose}
@@ -194,67 +166,28 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
           </button>
         </div>
 
-        {/* Tabs - Show when we have context and more than 1 member */}
-        {context && members.length > 1 && (
-          <div className="px-5 py-3 border-b border-border">
-            <div className="flex rounded-lg bg-muted p-1">
-              <button
-                onClick={() => setActiveTab('existing')}
-                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all ${
-                  activeTab === 'existing' 
-                    ? 'bg-card text-foreground shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Pilih dari Daftar
-              </button>
-              <button
-                onClick={() => setActiveTab('new')}
-                className={`flex-1 py-2 px-3 text-sm font-medium rounded-md transition-all ${
-                  activeTab === 'new' 
-                    ? 'bg-card text-foreground shadow-sm' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Buat Baru
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {activeTab === 'existing' && context ? (
-            // Existing member selection
+          {!showNewForm && context ? (
+            // Member selection list
             <div className="p-5 space-y-3">
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
                   type="text"
-                  value={existingSearch}
-                  onChange={(e) => setExistingSearch(e.target.value)}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                   placeholder="Cari nama..."
                   className="w-full h-10 pl-10 pr-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
               </div>
 
-              {/* Create new button */}
-              <button
-                onClick={() => setActiveTab('new')}
-                className="w-full p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-center gap-3 hover:bg-primary/20 transition-colors"
-              >
-                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
-                  <Plus className="w-5 h-5 text-primary" />
-                </div>
-                <span className="text-sm font-medium text-primary">Buat Anggota Baru</span>
-              </button>
-
               {/* Member list */}
               {existingMembers.length === 0 ? (
-                <div className="text-center py-8">
+                <div className="text-center py-6">
                   <p className="text-sm text-muted-foreground">
-                    {existingSearch ? 'Tidak ditemukan' : 'Belum ada anggota lain'}
+                    {search ? 'Tidak ditemukan' : 'Belum ada anggota lain'}
                   </p>
                 </div>
               ) : (
@@ -263,7 +196,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     <button
                       key={member.id}
                       onClick={() => handleSelectExisting(member.id)}
-                      className="w-full p-3 bg-card border border-border rounded-xl flex items-center gap-3 hover:border-primary/30 active:scale-[0.98] transition-all"
+                      className="w-full p-3 bg-background border border-border rounded-xl flex items-center gap-3 hover:border-primary/30 active:scale-[0.98] transition-all"
                     >
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
                         member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
@@ -283,20 +216,30 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                   ))}
                 </div>
               )}
+
+              {/* Create new button at bottom */}
+              <button
+                onClick={() => setShowNewForm(true)}
+                className="w-full p-3 bg-primary/10 border border-primary/30 rounded-xl flex items-center gap-3 hover:bg-primary/20 transition-colors mt-4"
+              >
+                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-primary">Buat Anggota Baru</span>
+              </button>
             </div>
           ) : (
             // New member form
-            <form onSubmit={handleSubmit} className="p-5 space-y-5">
-              {/* Pre-filled relationship context */}
-              {targetMember && linkType && (
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <p className="text-sm text-primary font-medium">
-                    Hubungkan dengan: <span className="font-semibold">{targetMember.name}</span>
-                  </p>
-                  <p className="text-xs text-primary/70 mt-0.5">
-                    {name || '[Nama baru]'} {getRelationshipLabel()}
-                  </p>
-                </div>
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              {/* Back button if came from list */}
+              {context && members.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewForm(false)}
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  ← Kembali ke daftar
+                </button>
               )}
 
               {/* Name */}
@@ -305,7 +248,6 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                   Nama Lengkap <span className="text-destructive">*</span>
                 </label>
                 <input
-                  ref={nameInputRef}
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -317,7 +259,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
               {/* Nickname */}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Nama Panggilan <span className="text-muted-foreground/60">(opsional)</span>
+                  Nama Panggilan
                 </label>
                 <input
                   type="text"
@@ -359,19 +301,33 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 </div>
               </div>
 
-              {/* Birth year */}
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Tahun Lahir
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
-                  placeholder="cth: 1990"
-                  className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                />
+              {/* Birth year & Domicile */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Tahun Lahir
+                  </label>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    value={birthYear}
+                    onChange={(e) => setBirthYear(e.target.value)}
+                    placeholder="cth: 1990"
+                    className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Domisili
+                  </label>
+                  <input
+                    type="text"
+                    value={domicile}
+                    onChange={(e) => setDomicile(e.target.value)}
+                    placeholder="cth: Jakarta"
+                    className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
               </div>
 
               {/* Deceased toggle */}
@@ -392,65 +348,23 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 </button>
 
                 {isDeceased && (
-                  <div className="mt-3 pl-8 grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                        Tahun Wafat
-                      </label>
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        value={deathYear}
-                        onChange={(e) => setDeathYear(e.target.value)}
-                        placeholder="cth: 2020"
-                        className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                        Tempat Wafat
-                      </label>
-                      <input
-                        type="text"
-                        value={deathPlace}
-                        onChange={(e) => setDeathPlace(e.target.value)}
-                        placeholder="cth: Jakarta"
-                        className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                      />
-                    </div>
+                  <div className="mt-3 pl-8">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Tahun Wafat
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={deathYear}
+                      onChange={(e) => setDeathYear(e.target.value)}
+                      placeholder="cth: 2020"
+                      className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                    />
                   </div>
                 )}
               </div>
 
-              {/* Domicile */}
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Domisili
-                </label>
-                <input
-                  type="text"
-                  value={domicile}
-                  onChange={(e) => setDomicile(e.target.value)}
-                  placeholder="cth: Jakarta Selatan"
-                  className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-                />
-              </div>
-
-              {/* Notes */}
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Catatan
-                </label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Pekerjaan, info tambahan..."
-                  rows={2}
-                  className="w-full px-4 py-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
-                />
-              </div>
-
-              {/* Link to existing member (only if no context) */}
+              {/* Link to member (when no context) */}
               {!context?.targetId && (
                 <div>
                   <label className="block text-xs font-medium text-muted-foreground mb-1.5">
@@ -460,7 +374,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     <button
                       type="button"
                       onClick={() => setShowLinkDropdown(!showLinkDropdown)}
-                      className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg flex items-center justify-between text-left"
+                      className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg flex items-center justify-between"
                     >
                       <span className={targetMember ? 'text-foreground' : 'text-muted-foreground'}>
                         {targetMember?.name || 'Pilih anggota...'}
@@ -483,31 +397,34 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                             />
                           </div>
                         </div>
-                        <div className="max-h-32 overflow-y-auto">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLinkTo(null)
-                              setLinkType(null)
-                              setShowLinkDropdown(false)
-                            }}
-                            className="w-full px-3 py-2 text-sm text-left text-muted-foreground hover:bg-muted"
-                          >
-                            Tidak ada
-                          </button>
-                          {filteredMembers.map(m => (
+                        <div className="max-h-36 overflow-y-auto">
+                          {targetMember && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLinkTo(null)
+                                setLinkType(null)
+                                setShowLinkDropdown(false)
+                              }}
+                              className="w-full px-3 py-2 text-sm text-left text-muted-foreground hover:bg-muted"
+                            >
+                              Tidak ada
+                            </button>
+                          )}
+                          {filteredLinkMembers.map(m => (
                             <button
                               key={m.id}
                               type="button"
                               onClick={() => {
                                 setLinkTo(m.id)
                                 setShowLinkDropdown(false)
+                                setLinkSearch('')
                               }}
                               className="w-full px-3 py-2 text-sm text-left hover:bg-muted flex items-center gap-2"
                             >
-                              <span>{m.name}</span>
+                              <span className="truncate">{m.name}</span>
                               {m.isSelf && (
-                                <span className="px-1 py-0.5 text-[9px] font-semibold bg-gold/20 text-gold rounded">
+                                <span className="px-1 py-0.5 text-[9px] font-semibold bg-gold/20 text-gold rounded flex-shrink-0">
                                   Kamu
                                 </span>
                               )}
@@ -518,50 +435,64 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     )}
                   </div>
 
-                  {/* Relationship type - simplified to 3 options */}
+                  {/* Relationship type selector */}
                   {linkTo && (
                     <div className="mt-3 space-y-2">
                       <p className="text-xs text-muted-foreground">Jenis Hubungan:</p>
-                      {(['child', 'parent', 'spouse'] as const).map(type => {
-                        const labels = {
-                          child: `Anak`,
-                          parent: `Orang Tua`,
-                          spouse: `Pasangan`,
-                        }
-                        const descriptions = {
-                          child: `${name || '[Nama baru]'} adalah anak dari ${targetMember?.name}`,
-                          parent: `${name || '[Nama baru]'} adalah orang tua dari ${targetMember?.name}`,
-                          spouse: `${name || '[Nama baru]'} adalah pasangan dari ${targetMember?.name}`,
-                        }
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setLinkType(type)}
-                            className={`w-full p-3 text-sm text-left rounded-lg border transition-colors ${
-                              linkType === type
-                                ? 'bg-primary/10 border-primary text-foreground'
-                                : 'bg-background border-border text-muted-foreground hover:border-primary/30'
-                            }`}
-                          >
-                            <span className="font-medium">{labels[type]}</span>
-                            <p className="text-xs mt-0.5 opacity-70">{descriptions[type]}</p>
-                          </button>
-                        )
-                      })}
+                      {[
+                        { type: 'child' as const, label: `${name || 'Orang ini'} anak dari ${targetMember?.nickname || targetMember?.name.split(' ')[0]}` },
+                        { type: 'parent' as const, label: `${name || 'Orang ini'} orang tua dari ${targetMember?.nickname || targetMember?.name.split(' ')[0]}` },
+                        { type: 'spouse' as const, label: `${name || 'Orang ini'} pasangan dari ${targetMember?.nickname || targetMember?.name.split(' ')[0]}` },
+                      ].map(opt => (
+                        <button
+                          key={opt.type}
+                          type="button"
+                          onClick={() => setLinkType(opt.type)}
+                          className={`w-full p-3 text-sm text-left rounded-lg border transition-all ${
+                            linkType === opt.type
+                              ? 'border-primary bg-primary/5 text-primary'
+                              : 'border-border hover:border-primary/30'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Submit */}
-              <button
-                type="submit"
-                disabled={!isValid}
-                className="w-full h-12 bg-primary text-primary-foreground font-semibold text-sm rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover active:scale-[0.98] transition-all"
-              >
-                Simpan
-              </button>
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Catatan
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Pekerjaan, info tambahan..."
+                  rows={2}
+                  className="w-full px-4 py-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
+                />
+              </div>
+
+              {/* Submit buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 h-11 bg-muted rounded-lg text-sm font-medium hover:bg-muted/80 transition-colors"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={!isValid}
+                  className="flex-1 h-11 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Simpan
+                </button>
+              </div>
             </form>
           )}
         </div>

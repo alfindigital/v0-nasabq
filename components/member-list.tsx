@@ -1,17 +1,16 @@
 'use client'
 
 import { useMemo } from 'react'
-import { ChevronRight, User, Users, Heart, UserCheck, Calendar, MapPin } from 'lucide-react'
+import { ChevronRight, User, Users, Heart } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
 
 interface MemberListProps {
   onViewMember: (member: Member) => void
-  onAddMember: () => void
 }
 
-export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
+export function MemberList({ onViewMember }: MemberListProps) {
   const { members, getParents, getChildren, getSpouses } = useNasabStore()
   const self = members.find(m => m.isSelf)
 
@@ -19,12 +18,10 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
   const stats = useMemo(() => {
     const maleCount = members.filter(m => m.gender === 'M').length
     const femaleCount = members.filter(m => m.gender === 'F').length
-    const deceasedCount = members.filter(m => m.isDeceased).length
     const spousePairs = Math.floor(members.reduce((acc, m) => 
       acc + m.relationships.filter(r => r.type === 'spouse').length, 0
     ) / 2)
     
-    // Calculate generations
     const getGeneration = (memberId: number, visited = new Set<number>()): number => {
       if (visited.has(memberId)) return 0
       visited.add(memberId)
@@ -36,10 +33,10 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
     }
     const generations = self ? getGeneration(self.id) : 1
 
-    return { maleCount, femaleCount, deceasedCount, spousePairs, generations, total: members.length }
+    return { maleCount, femaleCount, spousePairs, generations, total: members.length }
   }, [members, self])
 
-  // Sort members by generation (ancestors first), then alphabetically
+  // Sort members
   const sortedMembers = useMemo(() => {
     const getGeneration = (id: number, visited = new Set<number>()): number => {
       if (visited.has(id)) return 0
@@ -62,7 +59,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Stats Header - Sticky */}
-      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-0 z-10 bg-background border-b border-border">
         <div className="p-3">
           <div className="grid grid-cols-5 gap-1.5">
             <div className="p-2 bg-card rounded-lg text-center">
@@ -96,7 +93,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-[76px] z-10 bg-muted/80 backdrop-blur-sm border-b border-border">
+      <div className="sticky top-[76px] z-10 bg-muted/80 border-b border-border">
         <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           <div className="col-span-4">Nama</div>
           <div className="col-span-2 text-center">L/P</div>
@@ -106,7 +103,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
         </div>
       </div>
 
-      {/* Member Table List */}
+      {/* Member List */}
       <div className="flex-1 overflow-y-auto">
         {sortedMembers.length === 0 ? (
           <div className="h-full flex items-center justify-center p-4">
@@ -118,9 +115,6 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
               const relationLabel = self && !member.isSelf
                 ? getRelationToSelf(member.id, self.id, members, getParents, getChildren, getSpouses)
                 : ''
-              const parents = getParents(member.id)
-              const spouses = getSpouses(member.id)
-              const children = getChildren(member.id)
 
               return (
                 <button
@@ -128,7 +122,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
                   onClick={() => onViewMember(member)}
                   className="w-full grid grid-cols-12 gap-1 px-3 py-2.5 items-center hover:bg-muted/50 active:bg-muted transition-colors text-left"
                 >
-                  {/* Name Column */}
+                  {/* Name */}
                   <div className="col-span-4 flex items-center gap-2 min-w-0">
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
                       member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
@@ -170,8 +164,6 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
                       <span className="px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded truncate block">
                         {relationLabel}
                       </span>
-                    ) : member.isSelf ? (
-                      <span className="text-[9px] text-muted-foreground">-</span>
                     ) : (
                       <span className="text-[9px] text-muted-foreground/50">-</span>
                     )}
@@ -186,16 +178,6 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
             })}
           </div>
         )}
-      </div>
-
-      {/* Add Member FAB */}
-      <div className="sticky bottom-20 flex justify-end p-4 pointer-events-none">
-        <button
-          onClick={onAddMember}
-          className="w-12 h-12 bg-primary text-primary-foreground rounded-full flex items-center justify-center shadow-lg hover:bg-primary-hover active:scale-95 transition-all pointer-events-auto"
-        >
-          <span className="text-2xl font-light">+</span>
-        </button>
       </div>
     </div>
   )
