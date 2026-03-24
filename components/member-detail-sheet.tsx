@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { X, User, MapPin, FileText, Pencil, Trash2, Plus, ChevronRight, UserPlus } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
+import { ConfirmDialog } from './confirm-dialog'
 import type { Member, Gender } from '@/lib/types'
 
 interface MemberDetailSheetProps {
@@ -24,6 +25,7 @@ export function MemberDetailSheet({
 }: MemberDetailSheetProps) {
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState<Partial<Member>>({})
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'member' | 'relationship'; targetId?: number; targetName?: string } | null>(null)
   
   const { 
     members, 
@@ -47,7 +49,6 @@ export function MemberDetailSheet({
         birthYear: member.birthYear,
         isDeceased: member.isDeceased,
         deathYear: member.deathYear,
-        deathPlace: member.deathPlace,
         address: member.address,
         notes: member.notes,
       })
@@ -116,7 +117,6 @@ export function MemberDetailSheet({
       birthYear: editData.birthYear,
       isDeceased: editData.isDeceased,
       deathYear: editData.deathYear,
-      deathPlace: editData.deathPlace?.trim() || null,
       address: editData.address?.trim() || null,
       notes: editData.notes?.trim() || null,
     })
@@ -130,19 +130,24 @@ export function MemberDetailSheet({
       showToast('Tidak bisa menghapus dirimu sendiri')
       return
     }
-    
-    if (confirm(`Hapus ${member.name}? Semua hubungan dengan anggota ini juga akan dihapus.`)) {
+    setDeleteConfirm({ type: 'member' })
+  }
+
+  const confirmDelete = () => {
+    if (deleteConfirm?.type === 'member') {
       deleteMember(member.id)
       showToast(`${member.name} dihapus`)
+      setDeleteConfirm(null)
       onClose()
+    } else if (deleteConfirm?.type === 'relationship' && deleteConfirm.targetId) {
+      removeRelationship(member.id, deleteConfirm.targetId)
+      showToast('Hubungan dihapus')
+      setDeleteConfirm(null)
     }
   }
 
   const handleRemoveRelationship = (targetId: number, targetName: string) => {
-    if (confirm(`Hapus hubungan dengan ${targetName}?`)) {
-      removeRelationship(member.id, targetId)
-      showToast('Hubungan dihapus')
-    }
+    setDeleteConfirm({ type: 'relationship', targetId, targetName })
   }
 
   const RelatedMemberRow = ({ 
@@ -196,10 +201,10 @@ export function MemberDetailSheet({
         onClose()
         setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: type }), 100)
       }}
-      className="flex items-center gap-2 text-sm text-primary hover:text-primary-hover transition-colors py-1"
+      className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+      title={label}
     >
       <Plus className="w-4 h-4" />
-      <span>{label}</span>
     </button>
   )
 
@@ -293,25 +298,14 @@ export function MemberDetailSheet({
                   <span className="text-sm">Sudah meninggal</span>
                 </button>
                 {editData.isDeceased && (
-                  <div className="mt-3 pl-7 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Tahun Wafat</label>
-                      <input
-                        type="number"
-                        value={editData.deathYear || ''}
-                        onChange={(e) => setEditData(d => ({ ...d, deathYear: e.target.value ? parseInt(e.target.value) : null }))}
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-muted-foreground mb-1">Tempat Wafat</label>
-                      <input
-                        type="text"
-                        value={editData.deathPlace || ''}
-                        onChange={(e) => setEditData(d => ({ ...d, deathPlace: e.target.value }))}
-                        className="w-full h-9 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      />
-                    </div>
+                  <div className="mt-3 pl-7">
+                    <label className="block text-xs text-muted-foreground mb-1.5">Tahun Wafat</label>
+                    <input
+                      type="number"
+                      value={editData.deathYear || ''}
+                      onChange={(e) => setEditData(d => ({ ...d, deathYear: e.target.value ? parseInt(e.target.value) : null }))}
+                      className="w-full h-9 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    />
                   </div>
                 )}
               </div>
@@ -350,30 +344,6 @@ export function MemberDetailSheet({
                     <UserPlus className="w-3.5 h-3.5" />
                     Orang Tua
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false)
-                      onClose()
-                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'spouse' }), 100)
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    Pasangan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false)
-                      onClose()
-                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'child' }), 100)
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    Anak
-                  </button>
                 </div>
               </div>
             </div>
@@ -408,9 +378,9 @@ export function MemberDetailSheet({
                     {member.gender === 'M' ? 'Laki-laki' : 'Perempuan'}
                     {member.birthYear && ` · Lahir ${member.birthYear}`}
                   </p>
-                  {member.isDeceased && (member.deathYear || member.deathPlace) && (
+                  {member.isDeceased && member.deathYear && (
                     <p className="text-xs text-muted-foreground">
-                      Wafat {member.deathYear}{member.deathPlace && ` di ${member.deathPlace}`}
+                      Wafat {member.deathYear}
                     </p>
                   )}
                 </div>
@@ -437,28 +407,27 @@ export function MemberDetailSheet({
               {/* Family relationships */}
               <div className="space-y-4">
                 {/* Parents */}
-                {(parents.length > 0 || parents.length < 2) && (
-                  <div>
-                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Orang Tua</h4>
-                    {parents.map(p => (
-                      <RelatedMemberRow 
-                        key={p.id} 
-                        relatedMember={p} 
-                        label={p.gender === 'M' ? 'Ayah' : 'Ibu'}
-                        canRemove
-                      />
-                    ))}
-                    {parents.length < 2 && (
-                      <div className="mt-1">
-                        <AddRelativeButton label="Tambah Orang Tua" type="parent" />
-                      </div>
-                    )}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Orang Tua</h4>
+                    {parents.length < 2 && <AddRelativeButton label="Tambah Orang Tua" type="parent" />}
                   </div>
-                )}
+                  {parents.map(p => (
+                    <RelatedMemberRow 
+                      key={p.id} 
+                      relatedMember={p} 
+                      label={p.gender === 'M' ? 'Ayah' : 'Ibu'}
+                      canRemove
+                    />
+                  ))}
+                </div>
 
                 {/* Spouse */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Pasangan</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pasangan</h4>
+                    {spouses.length === 0 && <AddRelativeButton label="Tambah Pasangan" type="spouse" />}
+                  </div>
                   {spouses.map(s => (
                     <RelatedMemberRow 
                       key={s.id} 
@@ -467,14 +436,14 @@ export function MemberDetailSheet({
                       canRemove
                     />
                   ))}
-                  {spouses.length === 0 && (
-                    <AddRelativeButton label="Tambah Pasangan" type="spouse" />
-                  )}
                 </div>
 
                 {/* Children */}
                 <div>
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Anak</h4>
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Anak</h4>
+                    <AddRelativeButton label="Tambah Anak" type="child" />
+                  </div>
                   {children.map(c => (
                     <RelatedMemberRow 
                       key={c.id} 
@@ -483,7 +452,6 @@ export function MemberDetailSheet({
                       canRemove
                     />
                   ))}
-                  <AddRelativeButton label="Tambah Anak" type="child" />
                 </div>
 
                 {/* Siblings */}
@@ -557,6 +525,20 @@ export function MemberDetailSheet({
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteConfirm !== null}
+        title={deleteConfirm?.type === 'member' ? 'Hapus Anggota' : 'Hapus Hubungan'}
+        message={deleteConfirm?.type === 'member' 
+          ? `Hapus ${member.name}? Semua hubungan dengan anggota ini juga akan dihapus.`
+          : `Hapus hubungan dengan ${deleteConfirm?.targetName}?`
+        }
+        confirmLabel="Hapus"
+        cancelLabel="Batal"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirm(null)}
+      />
     </div>
   )
 }

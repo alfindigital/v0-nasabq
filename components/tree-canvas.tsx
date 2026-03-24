@@ -523,7 +523,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           onLongPress={(e) => handleNodeLongPress(self, e)}
         />
         <p className="text-sm text-muted-foreground mt-6 max-w-[200px]">
-          Tap atau tekan lama untuk mulai menambah keluarga
+          Tap untuk mulai menambah keluarga
         </p>
         <ZoomControls
           onFit={handleFitToScreen}
