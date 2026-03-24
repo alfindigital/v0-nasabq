@@ -11,6 +11,7 @@ interface TreeNodeProps {
   hasChildren?: boolean
   isExpanded?: boolean
   childCount?: number
+  mahramStatus?: 'mahram' | 'non-mahram' | 'spouse' | 'same-gender' | 'self'
   onTap: () => void
   onLongPress: (e: React.MouseEvent | React.TouchEvent) => void
   onToggleExpand?: () => void
@@ -23,45 +24,66 @@ export function TreeNode({
   hasChildren,
   isExpanded,
   childCount,
+  mahramStatus,
   onTap,
   onLongPress,
   onToggleExpand
 }: TreeNodeProps) {
   const longPressTimer = useRef<NodeJS.Timeout | null>(null)
-  const isLongPress = useRef(false)
+  const touchMoved = useRef(false)
 
-  const handleStart = (clientX: number, clientY: number, e: React.MouseEvent | React.TouchEvent) => {
-    isLongPress.current = false
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchMoved.current = false
     longPressTimer.current = setTimeout(() => {
-      isLongPress.current = true
-      onLongPress(e)
+      if (!touchMoved.current) {
+        onLongPress(e)
+      }
     }, 500)
   }
 
-  const handleEnd = () => {
+  const handleTouchMove = () => {
+    touchMoved.current = true
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current)
       longPressTimer.current = null
     }
-    if (!isLongPress.current) {
+  }
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    // If not moved and timer was cleared (short tap), trigger tap
+    if (!touchMoved.current) {
+      e.preventDefault() // Prevent click event from also firing
       onTap()
     }
   }
 
-  const handleCancel = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current)
-      longPressTimer.current = null
+  const handleClick = (e: React.MouseEvent) => {
+    // Only handle click for non-touch devices (mouse)
+    if (e.detail === 1) {
+      onTap()
     }
   }
 
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault()
+    onLongPress(e)
+  }
+
   const genderBorderColor = member.gender === 'M' ? 'border-l-primary' : 'border-l-female-accent'
+  
+  // Mahram indicator: green = mahram (safe), red = non-mahram (boundaries needed)
+  // Only show for opposite gender, not for self or same gender
+  const showMahramIndicator = mahramStatus && mahramStatus !== 'self' && mahramStatus !== 'same-gender'
   
   return (
     <div className="relative" style={{ width: 140 }}>
       <div
         className={`
-          flex items-center gap-2 h-[50px] px-3 bg-card border-2 border-border rounded-full
+          relative flex items-center gap-2 h-[50px] px-3 bg-card border-2 border-border rounded-full
           cursor-pointer select-none transition-all duration-200
           hover:scale-105 active:scale-100
           ${genderBorderColor} border-l-4
@@ -69,13 +91,28 @@ export function TreeNode({
           ${member.isDeceased ? 'opacity-60' : ''}
           ${isNew ? 'animate-pulse ring-2 ring-primary' : ''}
         `}
-        onMouseDown={(e) => handleStart(e.clientX, e.clientY, e)}
-        onMouseUp={handleEnd}
-        onMouseLeave={handleCancel}
-        onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY, e)}
-        onTouchEnd={handleEnd}
-        onTouchCancel={handleCancel}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
+        {/* Mahram indicator light */}
+        {showMahramIndicator && (
+          <div 
+            className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card shadow-sm ${
+              mahramStatus === 'mahram' ? 'bg-green-500' : 
+              mahramStatus === 'spouse' ? 'bg-pink-500' : 
+              'bg-red-500'
+            }`}
+            title={
+              mahramStatus === 'mahram' ? 'Mahram' : 
+              mahramStatus === 'spouse' ? 'Pasangan' : 
+              'Non-Mahram'
+            }
+          />
+        )}
+
         <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
           member.gender === 'M' ? 'bg-primary/20' : 'bg-female-accent/20'
         }`}>

@@ -347,6 +347,142 @@ export function getRelationshipLabel(
 }
 
 /**
+ * Determine if a person is mahram (marriage is permanently forbidden) from user's perspective.
+ * Returns: 'mahram' | 'non-mahram' | 'spouse' | 'same-gender' | 'self'
+ * 
+ * Mahram relatives (marriage forbidden):
+ * - All direct ancestors (parents, grandparents, etc.)
+ * - All direct descendants (children, grandchildren, etc.)
+ * - Siblings (full, half)
+ * - Parents' siblings (uncles, aunts - both blood and by marriage)
+ * - Siblings' children (nephews, nieces)
+ * - Parents-in-law (spouse's parents)
+ * - Children-in-law (children's spouses)
+ * - Step-parents and step-children
+ * 
+ * Non-mahram relatives (marriage permissible):
+ * - Cousins (all degrees)
+ * - Siblings-in-law (spouse's siblings, siblings' spouses)
+ * - Spouse's other relatives (except parents)
+ * - Cousins' spouses, etc.
+ */
+export function getMahramStatus(
+  selfId: number,
+  targetId: number,
+  selfGender: 'M' | 'F',
+  targetMember: Member,
+  members: Member[],
+  getParents: (id: number) => Member[],
+  getChildren: (id: number) => Member[],
+  getSpouses: (id: number) => Member[]
+): 'mahram' | 'non-mahram' | 'spouse' | 'same-gender' | 'self' {
+  if (selfId === targetId) return 'self'
+  
+  // Same gender - mahram concept doesn't apply
+  if (selfGender === targetMember.gender) return 'same-gender'
+  
+  const result = findPath(selfId, targetId, members, getParents, getChildren, getSpouses)
+  if (!result) return 'non-mahram'
+  
+  const path = result.steps.map(s => s.direction)
+  const pathStr = path.join(',')
+  
+  const upCount = path.filter(d => d === 'up').length
+  const downCount = path.filter(d => d === 'down').length
+  const lateralCount = path.filter(d => d === 'lateral').length
+  
+  // Direct spouse
+  if (pathStr === 'lateral') return 'spouse'
+  
+  // === MAHRAM RELATIONSHIPS ===
+  
+  // 1. Direct ancestors (all levels) - parents, grandparents, great-grandparents, etc.
+  if (lateralCount === 0 && downCount === 0 && upCount > 0) return 'mahram'
+  
+  // 2. Direct descendants (all levels) - children, grandchildren, etc.
+  if (lateralCount === 0 && upCount === 0 && downCount > 0) return 'mahram'
+  
+  // 3. Siblings (via one parent) - up,down pattern with equal counts and no lateral
+  if (lateralCount === 0 && upCount === 1 && downCount === 1) return 'mahram'
+  
+  // 4. Uncles/Aunts (parent's siblings) - up,up,down
+  if (pathStr === 'up,up,down') return 'mahram'
+  
+  // 5. Great uncles/aunts - up,up,up,down
+  if (pathStr === 'up,up,up,down') return 'mahram'
+  
+  // 6. Nephews/Nieces (siblings' children) - up,down,down
+  if (pathStr === 'up,down,down') return 'mahram'
+  
+  // 7. Grand nephews/nieces - up,down,down,down
+  if (pathStr === 'up,down,down,down') return 'mahram'
+  
+  // 8. Parents-in-law (spouse's parents) - lateral,up
+  if (pathStr === 'lateral,up') return 'mahram'
+  
+  // 9. Spouse's grandparents - lateral,up,up
+  if (pathStr === 'lateral,up,up') return 'mahram'
+  
+  // 10. Children-in-law (children's spouses) - down,lateral
+  if (pathStr === 'down,lateral') return 'mahram'
+  
+  // 11. Grandchildren-in-law - down,down,lateral
+  if (pathStr === 'down,down,lateral') return 'mahram'
+  
+  // 12. Step-children (spouse's children from another marriage)
+  // This would be: lateral,down - but we need to check if the child is not also your child
+  if (pathStr === 'lateral,down') return 'mahram'
+  
+  // 13. Step-grandchildren
+  if (pathStr === 'lateral,down,down') return 'mahram'
+  
+  // 14. Step-parents (parent's spouse who is not your birth parent)
+  // This would be: up,lateral
+  if (pathStr === 'up,lateral') return 'mahram'
+  
+  // 15. Step-grandparents
+  if (pathStr === 'up,up,lateral') return 'mahram'
+  if (pathStr === 'up,lateral,up') return 'mahram'
+  
+  // === NON-MAHRAM RELATIONSHIPS ===
+  
+  // Siblings-in-law (spouse's siblings) - lateral,up,down
+  if (pathStr === 'lateral,up,down') return 'non-mahram'
+  
+  // Siblings' spouses - up,down,lateral
+  if (pathStr === 'up,down,lateral') return 'non-mahram'
+  
+  // Cousins (all degrees) - up,up,down,down pattern
+  if (lateralCount === 0 && upCount >= 2 && downCount >= 2 && upCount === downCount) return 'non-mahram'
+  
+  // Cousin's children - up,up,down,down,down
+  if (lateralCount === 0 && upCount >= 2 && downCount > upCount) return 'non-mahram'
+  
+  // Parent's cousins - up,up,up,down,down
+  if (lateralCount === 0 && upCount > downCount && upCount >= 3 && downCount >= 2) return 'non-mahram'
+  
+  // Spouse's siblings' spouses - lateral,up,down,lateral
+  if (pathStr === 'lateral,up,down,lateral') return 'non-mahram'
+  
+  // Spouse's uncles/aunts - lateral,up,up,down
+  if (pathStr === 'lateral,up,up,down') return 'non-mahram'
+  
+  // Spouse's cousins
+  if (path[0] === 'lateral' && upCount >= 2 && downCount >= 2) return 'non-mahram'
+  
+  // Besan (children's spouse's parents) - down,lateral,up
+  if (pathStr === 'down,lateral,up') return 'non-mahram'
+  
+  // Default: if there's a lateral connection in the middle (through marriage), usually non-mahram
+  // except for the specific mahram cases already handled above
+  if (lateralCount > 0) return 'non-mahram'
+  
+  // Blood relatives not covered above - analyze the pattern
+  // If purely blood (no lateral) and not matching mahram patterns, likely distant cousins
+  return 'non-mahram'
+}
+
+/**
  * Get simple relationship label for display (with possessive form)
  */
 export function getRelationToSelf(
