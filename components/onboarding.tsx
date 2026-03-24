@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useNasabStore } from '@/lib/store'
+import { NasabLogo } from './nasab-logo'
 import type { Gender } from '@/lib/types'
 
 interface OnboardingProps {
@@ -120,27 +121,11 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     <div className="min-h-[100dvh] bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <form onSubmit={handleSubmit}>
-          {/* Branding */}
-          <div className="text-center mb-6">
-            <div className="flex items-center justify-center gap-2 mb-2">
-              {/* NasabQ Logo */}
-              <svg 
-                viewBox="0 0 24 24" 
-                className="w-6 h-6 text-primary"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="12" y1="6" x2="12" y2="18" />
-                <line x1="12" y1="6" x2="6" y2="3" />
-                <line x1="12" y1="6" x2="18" y2="3" />
-                <line x1="12" y1="18" x2="7" y2="21" />
-                <line x1="12" y1="18" x2="17" y2="21" />
-              </svg>
-              <h2 className="font-display font-extrabold text-xl tracking-[2px] text-primary">NASABQ</h2>
-            </div>
+        {/* Branding */}
+        <div className="mt-12 text-center">
+          <NasabLogo size="md" showText textSize="md" />
+          <p className="text-[10px] text-muted-foreground mt-1">Kenali Akar Keluargamu</p>
+        </div>
             <p className="text-[10px] text-muted-foreground">Kenali Akar Keluargamu</p>
           </div>
 

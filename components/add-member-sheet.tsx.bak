@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Search, User, Plus, Trash2 } from 'lucide-react'
+import { X, Search, User, Plus, ChevronRight, ChevronDown, Trash2 } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import type { Gender } from '@/lib/types'
 
@@ -63,10 +63,10 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       setShowAddRelation(false)
       setNewRelMemberId(null)
       setNewRelType(null)
-      setErrors({})
       
       if (context?.targetId && context.relationshipType) {
         setRelationships([{ memberId: context.targetId, type: context.relationshipType }])
+        // Show list view if we have context and other members
         setShowNewForm(members.length <= 1)
       } else {
         setRelationships([])
@@ -87,13 +87,14 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     return true
   })
   
-  // Members available for adding relationships
+  // Members available for adding relationships (exclude already linked)
   const availableForRelation = members.filter(m => 
     !relationships.some(r => r.memberId === m.id) &&
     (m.name.toLowerCase().includes(relSearch.toLowerCase()) ||
     m.nickname?.toLowerCase().includes(relSearch.toLowerCase()))
   )
 
+  // Handle selecting existing member
   const handleSelectExisting = (memberId: number) => {
     if (!context?.targetId || !context.relationshipType) return
     
@@ -188,6 +189,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
       isSelf: false,
     })
 
+    // Add all relationships
     relationships.forEach(rel => {
       if (rel.type === 'child') {
         addRelationship(newId, rel.memberId, 'parent')
@@ -225,7 +227,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-foreground/40 backdrop-blur-sm" onClick={onClose} />
       
-      <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[20px] max-h-[90vh] overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 duration-300">
+      <div className="absolute bottom-0 left-0 right-0 bg-card rounded-t-[20px] sheet-up max-h-[90vh] overflow-hidden flex flex-col">
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-1">
           <div className="w-10 h-1 bg-border rounded-full" />
@@ -233,7 +235,9 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
         {/* Header */}
         <div className="px-5 py-3 flex items-center justify-between border-b border-border">
-          <h2 className="font-display font-semibold text-[17px]">{getContextLabel()}</h2>
+          <div>
+            <h2 className="font-display font-semibold text-[17px]">{getContextLabel()}</h2>
+          </div>
           <button
             onClick={onClose}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
@@ -244,38 +248,86 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
-          {existingMembers.length > 0 && !showNewForm ? (
-            <div className="p-4 space-y-2">
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cari anggota..."
-                className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
-              />
-              {existingMembers.map(m => (
-                <button
-                  key={m.id}
-                  onClick={() => handleSelectExisting(m.id)}
-                  className="w-full p-3 text-left bg-muted rounded-lg hover:bg-primary/10 transition-colors flex items-center gap-3"
-                >
-                  <User className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium">{m.nickname || m.name}</p>
-                    <p className="text-xs text-muted-foreground">{m.name}</p>
-                  </div>
-                </button>
-              ))}
+          {!showNewForm && context ? (
+            // Member selection list
+            <div className="p-5 space-y-3">
+              {/* Search */}
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Cari nama..."
+                  className="w-full h-10 pl-10 pr-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+
+              {/* Member list */}
+              {existingMembers.length === 0 ? (
+                <div className="text-center py-6">
+                  <p className="text-sm text-muted-foreground">
+                    {search ? 'Tidak ditemukan' : 'Belum ada anggota lain'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {existingMembers.map(member => (
+                    <button
+                      key={member.id}
+                      onClick={() => handleSelectExisting(member.id)}
+                      className="w-full p-3 bg-background border border-border rounded-xl flex items-center gap-3 hover:border-primary/30 active:scale-[0.98] transition-all"
+                    >
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center ${
+                        member.isDeceased 
+                          ? 'bg-muted-foreground/20' 
+                          : member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                      }`}>
+                        <User className={`w-4 h-4 ${
+                          member.isDeceased 
+                            ? 'text-muted-foreground' 
+                            : member.gender === 'M' ? 'text-primary' : 'text-female-accent'
+                        }`} />
+                      </div>
+                      <div className="flex-1 min-w-0 text-left">
+                        <p className="font-medium text-sm truncate">{member.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {member.gender === 'M' ? 'L' : 'P'}
+                          {member.birthYear && ` · ${member.birthYear}`}
+                          {member.isSelf && ' · Kamu'}
+                        </p>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Create new button at bottom */}
               <button
                 onClick={() => setShowNewForm(true)}
-                className="w-full p-3 text-sm font-medium text-primary border border-primary/30 rounded-lg hover:bg-primary/5 transition-colors flex items-center justify-center gap-2"
+                className="w-full p-3 bg-primary/10 border border-primary/30 rounded-xl flex items-center gap-3 hover:bg-primary/20 transition-colors mt-4"
               >
-                <Plus className="w-4 h-4" />
-                Atau Tambah Anggota Baru
+                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center">
+                  <Plus className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-sm font-medium text-primary">Buat Anggota Baru</span>
               </button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+            // New member form
+            <form onSubmit={handleSubmit} className="p-5 space-y-4">
+              {/* Back button if came from list */}
+              {context && members.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setShowNewForm(false)}
+                  className="text-sm text-primary hover:underline flex items-center gap-1"
+                >
+                  ← Kembali ke daftar
+                </button>
+              )}
+
               {/* Name */}
               <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
@@ -283,7 +335,6 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 </label>
                 <input
                   type="text"
-                  autoFocus
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value)
@@ -299,13 +350,15 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
               {/* Nickname */}
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Nama Panggilan</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Nama Panggilan
+                </label>
                 <input
                   type="text"
                   value={nickname}
                   onChange={(e) => setNickname(e.target.value)}
                   placeholder="cth: Mas Mad"
-                  className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                 />
               </div>
 
@@ -314,18 +367,20 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                   Jenis Kelamin <span className="text-destructive">*</span>
                 </label>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => {
                       setGender('M')
                       if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
                     }}
-                    className={`flex-1 h-11 rounded-lg text-sm font-medium transition-all ${
-                      gender === 'M' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border hover:border-primary/50'
+                    className={`h-11 rounded-lg text-sm font-medium transition-all ${
+                      gender === 'M'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background border border-border hover:border-primary/50'
                     }`}
                   >
-                    L
+                    Laki-laki
                   </button>
                   <button
                     type="button"
@@ -333,20 +388,24 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       setGender('F')
                       if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
                     }}
-                    className={`flex-1 h-11 rounded-lg text-sm font-medium transition-all ${
-                      gender === 'F' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border hover:border-primary/50'
+                    className={`h-11 rounded-lg text-sm font-medium transition-all ${
+                      gender === 'F'
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-background border border-border hover:border-primary/50'
                     }`}
                   >
-                    P
+                    Perempuan
                   </button>
                 </div>
                 {errors.gender && <p className="text-xs text-destructive mt-1">{errors.gender}</p>}
               </div>
 
-              {/* Birth Year & Domicile */}
+              {/* Birth year & Domicile */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Tahun Lahir</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Tahun Lahir
+                  </label>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -355,65 +414,74 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       setBirthYear(e.target.value)
                       if (errors.birthYear) setErrors(er => ({ ...er, birthYear: '' }))
                     }}
-                    placeholder="1990"
-                    className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
-                      errors.birthYear ? 'border-destructive' : 'border-border'
+                    placeholder="cth: 1990"
+                    className={`w-full h-11 px-4 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                      errors.birthYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
                     }`}
                   />
                   {errors.birthYear && <p className="text-xs text-destructive mt-1">{errors.birthYear}</p>}
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">Domisili</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Domisili
+                  </label>
                   <input
                     type="text"
                     value={domicile}
                     onChange={(e) => setDomicile(e.target.value)}
-                    placeholder="Jakarta"
-                    className="w-full h-10 px-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30"
+                    placeholder="cth: Jakarta"
+                    className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
                   />
                 </div>
               </div>
 
-              {/* Deceased */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="deceased"
-                  checked={isDeceased}
-                  onChange={(e) => setIsDeceased(e.target.checked)}
-                  className="w-4 h-4 rounded border-border text-primary"
-                />
-                <label htmlFor="deceased" className="text-sm font-medium cursor-pointer">
-                  Sudah meninggal
-                </label>
-              </div>
+              {/* Deceased toggle */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setIsDeceased(!isDeceased)}
+                  className="flex items-center gap-3"
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${isDeceased ? 'bg-primary border-primary' : 'border-border'}`}>
+                    {isDeceased && (
+                      <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className="text-sm">Sudah meninggal?</span>
+                </button>
 
-              {isDeceased && (
-                <div className="mt-3 pl-8">
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Tahun Wafat <span className="text-destructive">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={deathYear}
-                    onChange={(e) => {
-                      setDeathYear(e.target.value)
-                      if (errors.deathYear) setErrors(er => ({ ...er, deathYear: '' }))
-                    }}
-                    placeholder="2020"
-                    className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 transition-colors ${
-                      errors.deathYear ? 'border-destructive' : 'border-border'
-                    }`}
-                  />
-                  {errors.deathYear && <p className="text-xs text-destructive mt-1">{errors.deathYear}</p>}
-                </div>
-              )}
+                {isDeceased && (
+                  <div className="mt-3 pl-8">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Tahun Wafat <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={deathYear}
+                      onChange={(e) => {
+                        setDeathYear(e.target.value)
+                        if (errors.deathYear) setErrors(er => ({ ...er, deathYear: '' }))
+                      }}
+                      placeholder="cth: 2020"
+                      className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                        errors.deathYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                      }`}
+                    />
+                    {errors.deathYear && <p className="text-xs text-destructive mt-1">{errors.deathYear}</p>}
+                  </div>
+                )}
+              </div>
 
               {/* Relationships */}
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Hubungkan dengan</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Hubungkan dengan
+                </label>
                 
+                {/* Existing relationships */}
                 {relationships.length > 0 && (
                   <div className="space-y-2 mb-2">
                     {relationships.map((rel, idx) => {
@@ -425,19 +493,22 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                             <p className="text-sm font-medium truncate">{member.nickname || member.name}</p>
                             <p className="text-xs text-muted-foreground">{getRelationLabel(rel.type)}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveRelation(idx)}
-                            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-background"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
-                          </button>
+                          {!(context?.targetId === rel.memberId) && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveRelation(idx)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-background"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-muted-foreground" />
+                            </button>
+                          )}
                         </div>
                       )
                     })}
                   </div>
                 )}
 
+                {/* Add relationship UI */}
                 {!showAddRelation ? (
                   <button
                     type="button"
@@ -449,6 +520,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                   </button>
                 ) : (
                   <div className="p-3 bg-muted rounded-lg space-y-3">
+                    {/* Member selector */}
                     <div className="relative">
                       <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                       <input
@@ -473,6 +545,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                           >
                             <User className="w-3.5 h-3.5" />
                             <span className="truncate">{m.nickname || m.name}</span>
+                            {m.isSelf && <span className="text-[9px] px-1 bg-gold/20 text-gold rounded">Kamu</span>}
                           </button>
                         ))}
                       </div>
@@ -480,6 +553,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       <p className="text-xs text-muted-foreground text-center py-2">Tidak ada anggota tersedia</p>
                     )}
 
+                    {/* Relation type */}
                     {newRelMemberId && (
                       <div className="flex gap-2">
                         {(['child', 'parent', 'spouse'] as const).map(type => (
@@ -499,6 +573,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       </div>
                     )}
 
+                    {/* Action buttons */}
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -516,7 +591,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                         type="button"
                         onClick={handleAddRelation}
                         disabled={!newRelMemberId || !newRelType}
-                        className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                        className="flex-1 py-2 text-xs font-medium bg-primary text-primary-foreground rounded-lg hover:bg-primary-hover disabled:opacity-50"
                       >
                         Tambah
                       </button>
@@ -527,13 +602,15 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
 
               {/* Notes */}
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">Catatan</label>
+                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                  Catatan
+                </label>
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Pekerjaan, info tambahan..."
                   rows={2}
-                  className="w-full px-4 py-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+                  className="w-full px-4 py-3 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none"
                 />
               </div>
 
@@ -549,7 +626,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                 <button
                   type="submit"
                   disabled={!isValid}
-                  className="flex-1 h-11 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 h-11 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Simpan
                 </button>
