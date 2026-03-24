@@ -110,6 +110,7 @@ export default function Home() {
         {activeView === 'list' && (
           <MemberList 
             onViewMember={handleViewMember}
+            onAddMember={() => handleAddMember()}
           />
         )}
         {activeView === 'relationship' && (

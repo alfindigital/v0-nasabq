@@ -1,16 +1,17 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronRight, User, Users, Heart, Search, X } from 'lucide-react'
+import { ChevronRight, User, Users, Heart, Search, X, Plus } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
 
 interface MemberListProps {
   onViewMember: (member: Member) => void
+  onAddMember: () => void
 }
 
-export function MemberList({ onViewMember }: MemberListProps) {
+export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
   const { members, getParents, getChildren, getSpouses } = useNasabStore()
   const self = members.find(m => m.isSelf)
   const [searchQuery, setSearchQuery] = useState('')
@@ -126,10 +127,21 @@ export function MemberList({ onViewMember }: MemberListProps) {
             )}
           </div>
         </div>
+
+        {/* Add New Member Button */}
+        <div className="px-3 pb-3">
+          <button
+            onClick={onAddMember}
+            className="w-full flex items-center justify-center gap-2 h-10 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Anggota Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-[140px] z-10 bg-muted/80 border-b border-border">
+      <div className="sticky top-[188px] z-10 bg-muted/80 border-b border-border">
         <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           <div className="col-span-4">Nama</div>
           <div className="col-span-2 text-center">Jenis</div>
