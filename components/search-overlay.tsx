@@ -7,14 +7,12 @@ import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
 
 interface SearchOverlayProps {
-  open: boolean
-  onClose: () => void
   onSelectMember: (member: Member) => void
 }
 
 type Filter = 'all' | 'male' | 'female' | 'deceased'
 
-export function SearchOverlay({ open, onClose, onSelectMember }: SearchOverlayProps) {
+export function SearchOverlay({ onSelectMember }: SearchOverlayProps) {
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -23,20 +21,9 @@ export function SearchOverlay({ open, onClose, onSelectMember }: SearchOverlayPr
   const self = members.find(m => m.isSelf)
 
   useEffect(() => {
-    if (open) {
-      setSearch('')
-      setFilter('all')
-      setTimeout(() => inputRef.current?.focus(), 100)
-    }
-  }, [open])
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && open) onClose()
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
+    // Focus input when component mounts
+    setTimeout(() => inputRef.current?.focus(), 100)
+  }, [])
 
   const filteredMembers = members.filter(m => {
     const query = search.toLowerCase()
@@ -52,13 +39,6 @@ export function SearchOverlay({ open, onClose, onSelectMember }: SearchOverlayPr
     
     return matchesSearch && matchesFilter
   })
-
-  const handleSelect = (member: Member) => {
-    onClose()
-    setTimeout(() => onSelectMember(member), 100)
-  }
-
-  if (!open) return null
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -102,7 +82,7 @@ export function SearchOverlay({ open, onClose, onSelectMember }: SearchOverlayPr
         </div>
       </div>
 
-      {/* Table Header - Same as MemberList */}
+      {/* Table Header */}
       <div className="sticky top-[106px] z-10 bg-muted/80 border-b border-border">
         <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           <div className="col-span-4">Nama</div>
@@ -113,7 +93,7 @@ export function SearchOverlay({ open, onClose, onSelectMember }: SearchOverlayPr
         </div>
       </div>
 
-      {/* Results - Same layout as MemberList */}
+      {/* Results */}
       <div className="flex-1 overflow-y-auto">
         {filteredMembers.length === 0 ? (
           <div className="h-full flex items-center justify-center p-4">
@@ -131,7 +111,7 @@ export function SearchOverlay({ open, onClose, onSelectMember }: SearchOverlayPr
               return (
                 <button
                   key={member.id}
-                  onClick={() => handleSelect(member)}
+                  onClick={() => onSelectMember(member)}
                   className="w-full grid grid-cols-12 gap-1 px-3 py-2.5 items-center hover:bg-muted/50 active:bg-muted transition-colors text-left"
                 >
                   {/* Name */}

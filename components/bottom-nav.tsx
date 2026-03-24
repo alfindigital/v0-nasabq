@@ -9,10 +9,9 @@ interface BottomNavProps {
   activeView: ViewType
   onViewChange: (view: ViewType) => void
   onAddClick: () => void
-  onSearchClick: () => void
 }
 
-export function BottomNav({ activeView, onViewChange, onAddClick, onSearchClick }: BottomNavProps) {
+export function BottomNav({ activeView, onViewChange, onAddClick }: BottomNavProps) {
   const [showPulse, setShowPulse] = useState(false)
   const members = useNasabStore((state) => state.members)
 
@@ -65,7 +64,7 @@ export function BottomNav({ activeView, onViewChange, onAddClick, onSearchClick 
       {rightTabs.map((tab) => (
         <button
           key={tab.id}
-          onClick={() => tab.id === 'search' ? onSearchClick() : onViewChange(tab.id)}
+          onClick={() => onViewChange(tab.id)}
           className={`flex-1 h-full flex flex-col items-center justify-center gap-0.5 transition-colors ${
             activeView === tab.id ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
           }`}

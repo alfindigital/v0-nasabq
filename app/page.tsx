@@ -20,7 +20,6 @@ export default function Home() {
   const [mounted, setMounted] = useState(false)
   const [activeView, setActiveView] = useState<ViewType>('tree')
   const [menuOpen, setMenuOpen] = useState(false)
-  const [searchOpen, setSearchOpen] = useState(false)
   const [addSheetOpen, setAddSheetOpen] = useState(false)
   const [detailSheetOpen, setDetailSheetOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
@@ -50,18 +49,17 @@ export default function Home() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === '/' && !addSheetOpen && !detailSheetOpen && !menuOpen) {
         e.preventDefault()
-        setSearchOpen(true)
+        setActiveView('search')
       }
       if (e.key === 'Escape') {
-        if (searchOpen) setSearchOpen(false)
-        else if (addSheetOpen) setAddSheetOpen(false)
+        if (addSheetOpen) setAddSheetOpen(false)
         else if (detailSheetOpen) setDetailSheetOpen(false)
         else if (menuOpen) setMenuOpen(false)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [addSheetOpen, detailSheetOpen, menuOpen, searchOpen])
+  }, [addSheetOpen, detailSheetOpen, menuOpen])
 
   const showToast = (message: string) => {
     setToast({ message })
@@ -124,13 +122,17 @@ export default function Home() {
             onViewMember={handleViewMember}
           />
         )}
+        {activeView === 'search' && (
+          <SearchOverlay 
+            onSelectMember={handleViewMember}
+          />
+        )}
       </main>
 
       <BottomNav 
         activeView={activeView}
         onViewChange={setActiveView}
         onAddClick={() => handleAddMember()}
-        onSearchClick={() => setSearchOpen(true)}
       />
 
       {/* Overlays and Sheets */}
@@ -144,12 +146,6 @@ export default function Home() {
           if (self) handleViewMember(self)
         }}
         showToast={showToast}
-      />
-
-      <SearchOverlay
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onSelectMember={handleViewMember}
       />
 
       <AddMemberSheet
