@@ -48,6 +48,13 @@ export default function Home() {
     const fontSize = settings.fontSize || 'medium'
     document.documentElement.classList.remove('font-small', 'font-medium', 'font-large')
     document.documentElement.classList.add(`font-${fontSize}`)
+    
+    // Apply zoom scaling for arbitrary pixel values
+    const appContainer = document.getElementById('app-container')
+    if (appContainer) {
+      const scale = fontSize === 'small' ? '0.92' : fontSize === 'large' ? '1.08' : '1'
+      appContainer.style.zoom = scale
+    }
   }, [settings.fontSize])
 
   // Keyboard shortcuts
@@ -104,7 +111,7 @@ export default function Home() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+    <div id="app-container" className="h-[100dvh] flex flex-col bg-background overflow-hidden">
       <Header />
       
       <main className="flex-1 overflow-hidden relative">

@@ -218,13 +218,44 @@ html.dark,
   display: none;
 }
 
-/* Font Size Settings */
+/* Font Size Settings - using CSS zoom for consistent scaling */
 html.font-small {
+  --font-scale: 0.9;
   font-size: 14px;
 }
 html.font-medium {
+  --font-scale: 1;
   font-size: 16px;
 }
 html.font-large {
+  --font-scale: 1.1;
   font-size: 18px;
 }
+
+/* Apply font scaling to all text via root em */
+html.font-small body {
+  -webkit-text-size-adjust: 90%;
+}
+html.font-large body {
+  -webkit-text-size-adjust: 110%;
+}
+
+/* Scale specific text sizes that use arbitrary values */
+.font-scale {
+  font-size: calc(1em * var(--font-scale, 1));
+}
+
+/* Scaled text size utility classes */
+html.font-small .text-xs { font-size: 0.65rem; }
+html.font-small .text-sm { font-size: 0.775rem; }
+html.font-small .text-base { font-size: 0.875rem; }
+html.font-small .text-lg { font-size: 0.975rem; }
+html.font-small .text-xl { font-size: 1.1rem; }
+html.font-small .text-2xl { font-size: 1.35rem; }
+
+html.font-large .text-xs { font-size: 0.85rem; }
+html.font-large .text-sm { font-size: 0.975rem; }
+html.font-large .text-base { font-size: 1.125rem; }
+html.font-large .text-lg { font-size: 1.25rem; }
+html.font-large .text-xl { font-size: 1.4rem; }
+html.font-large .text-2xl { font-size: 1.7rem; }
