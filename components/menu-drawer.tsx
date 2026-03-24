@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { X, Download, Upload, Trash2, Info, User, Type } from 'lucide-react'
+import { X, Download, Upload, Trash2, Info, User, Type, Heart } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import type { FontSize } from '@/lib/types'
 
@@ -247,8 +247,10 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
                 <p className="text-xs text-muted-foreground mt-1">
                   Aplikasi silsilah keluarga untuk menyimpan dan mengenal akar keluargamu.
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Credit to{' '}
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                  Built with{' '}
+                  <Heart className="w-3 h-3 text-red-500 fill-red-500" />
+                  {' '}by{' '}
                   <a 
                     href="https://alfindigital.com" 
                     target="_blank" 
