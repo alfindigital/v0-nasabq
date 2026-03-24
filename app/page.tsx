@@ -112,7 +112,7 @@ export default function Home() {
 
   return (
     <div id="app-container" className="h-[100dvh] flex flex-col bg-background overflow-hidden">
-      <Header />
+      <Header darkMode={settings.darkMode} onToggleDarkMode={toggleDarkMode} />
       
       <main className="flex-1 overflow-hidden relative">
         {activeView === 'tree' && (
@@ -145,8 +145,6 @@ export default function Home() {
       <MenuDrawer 
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        darkMode={settings.darkMode}
-        onToggleDarkMode={toggleDarkMode}
         onViewSelf={() => {
           setMenuOpen(false)
           if (self) handleViewMember(self)
