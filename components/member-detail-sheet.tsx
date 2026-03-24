@@ -344,30 +344,6 @@ export function MemberDetailSheet({
                     <UserPlus className="w-3.5 h-3.5" />
                     Orang Tua
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false)
-                      onClose()
-                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'spouse' }), 100)
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    Pasangan
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsEditing(false)
-                      onClose()
-                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'child' }), 100)
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                  >
-                    <UserPlus className="w-3.5 h-3.5" />
-                    Anak
-                  </button>
                 </div>
               </div>
             </div>
@@ -408,6 +384,40 @@ export function MemberDetailSheet({
                     </p>
                   )}
                 </div>
+              </div>
+
+              {/* Quick Add Relationships */}
+              <div className="flex flex-wrap gap-2 pb-2 border-b border-border">
+                <button
+                  onClick={() => {
+                    onClose()
+                    setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'parent' }), 100)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Orang Tua
+                </button>
+                <button
+                  onClick={() => {
+                    onClose()
+                    setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'spouse' }), 100)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Pasangan
+                </button>
+                <button
+                  onClick={() => {
+                    onClose()
+                    setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'child' }), 100)
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  Anak
+                </button>
               </div>
 
               {/* Info details */}

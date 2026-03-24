@@ -121,12 +121,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     <div className="min-h-[100dvh] bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <form onSubmit={handleSubmit}>
-        {/* Branding */}
-        <div className="mt-12 text-center">
-          <NasabLogo size="md" showText textSize="md" />
-          <p className="text-[10px] text-muted-foreground mt-1">Kenali Akar Keluargamu</p>
-        </div>
-            <p className="text-[10px] text-muted-foreground">Kenali Akar Keluargamu</p>
+          {/* Branding */}
+          <div className="mt-12 text-center">
+            <NasabLogo size="md" showText textSize="md" />
+            <p className="text-[10px] text-muted-foreground mt-1">Kenali Akar Keluargamu</p>
           </div>
 
           {/* Title */}
