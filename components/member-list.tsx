@@ -100,15 +100,15 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="px-3 pb-3">
-          <div className="relative">
+        {/* Search Bar + Add Button */}
+        <div className="px-3 pb-3 flex gap-2">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cari anggota keluarga..."
+              placeholder="Cari anggota..."
               className="w-full h-10 pl-9 pr-9 bg-card border border-border rounded-lg text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
             />
             {searchQuery && (
@@ -120,22 +120,18 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
               </button>
             )}
           </div>
-        </div>
-
-        {/* Add New Member Button */}
-        <div className="px-3 pb-3">
           <button
             onClick={onAddMember}
-            className="w-full flex items-center justify-center gap-2 h-10 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors"
+            className="flex items-center justify-center gap-1.5 h-10 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors"
           >
             <Plus className="w-4 h-4" />
-            <span>Tambah Anggota Baru</span>
+            <span>Tambah</span>
           </button>
         </div>
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-[188px] z-10 bg-muted/80 border-b border-border">
+      <div className="sticky top-[148px] z-10 bg-muted/80 border-b border-border">
         <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
           <div className="col-span-4">Nama</div>
           <div className="col-span-2 text-center">L/P</div>
