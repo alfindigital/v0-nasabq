@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronRight, User, Users, Heart, Search, X, Plus } from 'lucide-react'
+import { ChevronRight, User, Search, X, Plus } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
@@ -78,10 +78,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
         <div className="p-3">
           <div className="grid grid-cols-5 gap-1.5">
             <div className="p-2 bg-card rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Users className="w-3 h-3 text-primary" />
-                <span className="font-display font-bold text-base text-primary">{stats.total}</span>
-              </div>
+              <span className="font-display font-bold text-base text-primary">{stats.total}</span>
               <p className="text-[9px] text-muted-foreground">Total</p>
             </div>
             <div className="p-2 bg-card rounded-lg text-center">
@@ -93,10 +90,7 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
               <p className="text-[9px] text-muted-foreground">Perempuan</p>
             </div>
             <div className="p-2 bg-card rounded-lg text-center">
-              <div className="flex items-center justify-center gap-1">
-                <Heart className="w-3 h-3 text-female-accent" />
-                <span className="font-display font-bold text-sm">{stats.spousePairs}</span>
-              </div>
+              <span className="font-display font-bold text-sm">{stats.spousePairs}</span>
               <p className="text-[9px] text-muted-foreground">Keluarga</p>
             </div>
             <div className="p-2 bg-card rounded-lg text-center">
