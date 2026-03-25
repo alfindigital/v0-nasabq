@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Lock } from 'lucide-react'
+import { Lock, Moon, Sun } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { NasabLogo } from './nasab-logo'
 import type { Gender } from '@/lib/types'
@@ -22,7 +22,7 @@ export function OnboardingPopup({ open, onComplete }: OnboardingPopupProps) {
   const [notes, setNotes] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const { addMember } = useNasabStore()
+  const { addMember, settings, toggleDarkMode } = useNasabStore()
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -78,12 +78,29 @@ export function OnboardingPopup({ open, onComplete }: OnboardingPopupProps) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        {/* Header */}
-        <div className="p-6 pb-4 text-center border-b border-border">
-          <NasabLogo size="md" showText textSize="md" />
-          <p className="text-xs text-muted-foreground mt-1">Kenali Akar Keluargamu</p>
-          <h2 className="font-display font-bold text-lg mt-4">Assalamu'alaikum!</h2>
-          <p className="text-sm text-muted-foreground">Mulai dari kamu dulu</p>
+        {/* Header with dark mode toggle */}
+        <div className="relative p-6 pb-4 border-b border-border">
+          {/* Dark Mode Toggle - Top Right */}
+          <button
+            type="button"
+            onClick={toggleDarkMode}
+            className="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+            aria-label={settings.darkMode ? 'Mode terang' : 'Mode gelap'}
+          >
+            {settings.darkMode ? (
+              <Sun className="w-5 h-5 text-primary" />
+            ) : (
+              <Moon className="w-5 h-5 text-primary" />
+            )}
+          </button>
+
+          {/* Centered Branding */}
+          <div className="flex flex-col items-center text-center">
+            <NasabLogo size="lg" showText textSize="lg" />
+            <p className="text-sm text-muted-foreground mt-2">Kenali Akar Keluargamu</p>
+            <h2 className="font-display font-bold text-lg mt-6">Assalamu&apos;alaikum!</h2>
+            <p className="text-sm text-muted-foreground">Mulai dari kamu dulu</p>
+          </div>
         </div>
 
         {/* Form */}
