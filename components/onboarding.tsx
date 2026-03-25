@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Lock } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { NasabLogo } from './nasab-logo'
 import type { Gender } from '@/lib/types'
@@ -11,6 +12,7 @@ interface OnboardingProps {
 
 export function Onboarding({ onComplete }: OnboardingProps) {
   const { addMember } = useNasabStore()
+  const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
   const [nickname, setNickname] = useState('')
   const [gender, setGender] = useState<Gender | ''>('')
@@ -72,7 +74,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     e.preventDefault()
     if (!validateForm()) return
 
-    const newId = addMember({
+    addMember({
       name: name.trim(),
       nickname: nickname.trim() || null,
       gender: gender as Gender,
@@ -91,213 +93,245 @@ export function Onboarding({ onComplete }: OnboardingProps) {
   const isValid = name.trim() && gender
 
   return (
-    <div className="min-h-[100dvh] bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <form onSubmit={handleSubmit}>
-          {/* Branding */}
-          <div className="mt-12 text-center mb-8">
-            <NasabLogo size="md" showText textSize="md" />
-            <p className="text-[10px] text-muted-foreground mt-1">Kenali Akar Keluargamu</p>
-          </div>
+    <div className="min-h-[100dvh] bg-background">
+      {/* Header - same style as main app */}
+      <header className="h-12 md:h-[52px] px-4 flex items-center justify-between bg-primary/10 border-b border-primary/20">
+        <NasabLogo size="md" showText textSize="md" />
+      </header>
 
-          {/* Title */}
-          <div className="text-center mb-8">
-            <h1 className="font-display font-bold text-[22px] text-foreground mb-1">
-              Assalamu&apos;alaikum!
-            </h1>
-            <p className="text-muted-foreground text-sm">
-              Mulai dari kamu dulu.
-            </p>
-          </div>
-
-          {/* Form Fields */}
-          <div className="space-y-4">
-            {/* Full Name */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Nama Lengkap <span className="text-destructive">*</span>
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value)
-                  if (errors.name) setErrors(er => ({ ...er, name: '' }))
-                }}
-                placeholder="cth: Ahmad Fauzi"
-                className={`w-full h-11 px-4 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
-                  errors.name ? 'border-destructive focus:ring-destructive/30' : 'border-border'
-                }`}
-              />
-              {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
-            </div>
-
-            {/* Nickname */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Nama Panggilan
-              </label>
-              <input
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="cth: Fauzi"
-                className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
-              />
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Jenis Kelamin <span className="text-destructive">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGender('M')
-                    if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
-                  }}
-                  className={`h-11 rounded-lg text-sm font-medium transition-all ${
-                    gender === 'M'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background border border-border hover:border-primary/50'
-                  }`}
-                >
-                  Laki-laki
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setGender('F')
-                    if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
-                  }}
-                  className={`h-11 rounded-lg text-sm font-medium transition-all ${
-                    gender === 'F'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-background border border-border hover:border-primary/50'
-                  }`}
-                >
-                  Perempuan
-                </button>
-              </div>
-              {errors.gender && <p className="text-xs text-destructive mt-1">{errors.gender}</p>}
-            </div>
-
-            {/* Birth Year and Domicile */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Tahun Lahir
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={birthYear}
-                  onChange={(e) => {
-                    setBirthYear(e.target.value)
-                    if (errors.birthYear) setErrors(er => ({ ...er, birthYear: '' }))
-                  }}
-                  placeholder="cth: 1990"
-                  className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
-                    errors.birthYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
-                  }`}
-                />
-                {errors.birthYear && <p className="text-xs text-destructive mt-1">{errors.birthYear}</p>}
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Domisili
-                </label>
-                <input
-                  type="text"
-                  value={domicile}
-                  onChange={(e) => {
-                    setDomicile(e.target.value)
-                    if (errors.domicile) setErrors(er => ({ ...er, domicile: '' }))
-                  }}
-                  placeholder="cth: Jakarta"
-                  className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
-                    errors.domicile ? 'border-destructive focus:ring-destructive/30' : 'border-border'
-                  }`}
-                />
-                {errors.domicile && <p className="text-xs text-destructive mt-1">{errors.domicile}</p>}
-              </div>
-            </div>
-
-            {/* Deceased Status */}
-            <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
-              <input
-                type="checkbox"
-                id="deceased"
-                checked={isDeceased}
-                onChange={(e) => setIsDeceased(e.target.checked)}
-                className="w-4 h-4 rounded cursor-pointer"
-              />
-              <label htmlFor="deceased" className="text-sm font-medium cursor-pointer flex-1">
-                Sudah meninggal
-              </label>
-            </div>
-
-            {/* Death Year */}
-            {isDeceased && (
-              <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Tahun Wafat <span className="text-destructive">*</span>
-                </label>
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  value={deathYear}
-                  onChange={(e) => {
-                    setDeathYear(e.target.value)
-                    if (errors.deathYear) setErrors(er => ({ ...er, deathYear: '' }))
-                  }}
-                  placeholder="cth: 2020"
-                  className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
-                    errors.deathYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
-                  }`}
-                />
-                {errors.deathYear && <p className="text-xs text-destructive mt-1">{errors.deathYear}</p>}
-              </div>
-            )}
-
-            {/* Notes */}
-            <div>
-              <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                Catatan
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => {
-                  setNotes(e.target.value)
-                  if (errors.notes) setErrors(er => ({ ...er, notes: '' }))
-                }}
-                placeholder="Catatan tambahan..."
-                rows={3}
-                className={`w-full px-3 py-2 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none ${
-                  errors.notes ? 'border-destructive focus:ring-destructive/30' : 'border-border'
-                }`}
-              />
-              {errors.notes && <p className="text-xs text-destructive mt-1">{errors.notes}</p>}
-            </div>
-          </div>
-
-          {/* Submit Button */}
+      {/* Main Content - centered branding */}
+      <div className="flex flex-col items-center justify-center px-6" style={{ minHeight: 'calc(100dvh - 48px)' }}>
+        <div className="text-center">
+          <NasabLogo size="lg" showText textSize="lg" />
+          <p className="text-sm text-muted-foreground mt-2">Kenali Akar Keluargamu</p>
+          
+          {/* Start Button */}
           <button
-            type="submit"
-            disabled={!isValid}
-            className="w-full h-12 mt-8 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            onClick={() => setShowForm(true)}
+            className="mt-8 px-8 py-3 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 transition-colors"
           >
-            Mulai
+            Mulai Sekarang
           </button>
 
-          {/* Footer */}
-          <p className="text-center text-[10px] text-muted-foreground mt-6">
-            Data kamu akan disimpan secara lokal di device ini.
-          </p>
-        </form>
+          {/* Privacy Notice with Lock Icon */}
+          <div className="flex items-center justify-center gap-1.5 mt-6 text-muted-foreground">
+            <Lock className="w-3 h-3" />
+            <p className="text-[10px]">Data kamu akan disimpan secara lokal di device ini.</p>
+          </div>
+        </div>
       </div>
+
+      {/* Form Popup Modal */}
+      {showForm && (
+        <div className="fixed inset-0 z-50">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowForm(false)}
+          />
+          
+          {/* Modal */}
+          <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 max-w-md mx-auto bg-card rounded-2xl shadow-xl max-h-[85vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="p-4 border-b border-border flex items-center justify-between flex-shrink-0">
+              <div>
+                <h2 className="font-display font-bold text-lg">Assalamu&apos;alaikum!</h2>
+                <p className="text-sm text-muted-foreground">Mulai dari kamu dulu.</p>
+              </div>
+              <button
+                onClick={() => setShowForm(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors"
+              >
+                <span className="text-xl leading-none">&times;</span>
+              </button>
+            </div>
+
+            {/* Form Content - Scrollable */}
+            <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-4">
+              <div className="space-y-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Nama Lengkap <span className="text-destructive">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => {
+                      setName(e.target.value)
+                      if (errors.name) setErrors(er => ({ ...er, name: '' }))
+                    }}
+                    placeholder="cth: Ahmad Fauzi"
+                    className={`w-full h-11 px-4 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                      errors.name ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                    }`}
+                  />
+                  {errors.name && <p className="text-xs text-destructive mt-1">{errors.name}</p>}
+                </div>
+
+                {/* Nickname */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Nama Panggilan
+                  </label>
+                  <input
+                    type="text"
+                    value={nickname}
+                    onChange={(e) => setNickname(e.target.value)}
+                    placeholder="cth: Fauzi"
+                    className="w-full h-11 px-4 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+                  />
+                </div>
+
+                {/* Gender */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Jenis Kelamin <span className="text-destructive">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGender('M')
+                        if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
+                      }}
+                      className={`h-11 rounded-lg text-sm font-medium transition-all ${
+                        gender === 'M'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background border border-border hover:border-primary/50'
+                      }`}
+                    >
+                      Laki-laki
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGender('F')
+                        if (errors.gender) setErrors(er => ({ ...er, gender: '' }))
+                      }}
+                      className={`h-11 rounded-lg text-sm font-medium transition-all ${
+                        gender === 'F'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-background border border-border hover:border-primary/50'
+                      }`}
+                    >
+                      Perempuan
+                    </button>
+                  </div>
+                  {errors.gender && <p className="text-xs text-destructive mt-1">{errors.gender}</p>}
+                </div>
+
+                {/* Birth Year and Domicile */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Tahun Lahir
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={birthYear}
+                      onChange={(e) => {
+                        setBirthYear(e.target.value)
+                        if (errors.birthYear) setErrors(er => ({ ...er, birthYear: '' }))
+                      }}
+                      placeholder="cth: 1990"
+                      className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                        errors.birthYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                      }`}
+                    />
+                    {errors.birthYear && <p className="text-xs text-destructive mt-1">{errors.birthYear}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Domisili
+                    </label>
+                    <input
+                      type="text"
+                      value={domicile}
+                      onChange={(e) => {
+                        setDomicile(e.target.value)
+                        if (errors.domicile) setErrors(er => ({ ...er, domicile: '' }))
+                      }}
+                      placeholder="cth: Jakarta"
+                      className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                        errors.domicile ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                      }`}
+                    />
+                    {errors.domicile && <p className="text-xs text-destructive mt-1">{errors.domicile}</p>}
+                  </div>
+                </div>
+
+                {/* Deceased Status */}
+                <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+                  <input
+                    type="checkbox"
+                    id="deceased"
+                    checked={isDeceased}
+                    onChange={(e) => setIsDeceased(e.target.checked)}
+                    className="w-4 h-4 rounded cursor-pointer"
+                  />
+                  <label htmlFor="deceased" className="text-sm font-medium cursor-pointer flex-1">
+                    Sudah meninggal
+                  </label>
+                </div>
+
+                {/* Death Year */}
+                {isDeceased && (
+                  <div>
+                    <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                      Tahun Wafat <span className="text-destructive">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={deathYear}
+                      onChange={(e) => {
+                        setDeathYear(e.target.value)
+                        if (errors.deathYear) setErrors(er => ({ ...er, deathYear: '' }))
+                      }}
+                      placeholder="cth: 2020"
+                      className={`w-full h-10 px-3 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors ${
+                        errors.deathYear ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                      }`}
+                    />
+                    {errors.deathYear && <p className="text-xs text-destructive mt-1">{errors.deathYear}</p>}
+                  </div>
+                )}
+
+                {/* Notes */}
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Catatan
+                  </label>
+                  <textarea
+                    value={notes}
+                    onChange={(e) => {
+                      setNotes(e.target.value)
+                      if (errors.notes) setErrors(er => ({ ...er, notes: '' }))
+                    }}
+                    placeholder="Catatan tambahan..."
+                    rows={2}
+                    className={`w-full px-3 py-2 text-sm bg-background border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors resize-none ${
+                      errors.notes ? 'border-destructive focus:ring-destructive/30' : 'border-border'
+                    }`}
+                  />
+                  {errors.notes && <p className="text-xs text-destructive mt-1">{errors.notes}</p>}
+                </div>
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={!isValid}
+                className="w-full h-12 mt-6 bg-primary text-primary-foreground font-semibold rounded-lg hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Mulai
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
