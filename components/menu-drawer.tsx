@@ -98,43 +98,63 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
 
   // Copy share data (JSON) to clipboard
   const handleCopyShareData = async () => {
-    const data = exportData()
-    const json = JSON.stringify(data)
-    // Encode to base64 for cleaner sharing
-    const encoded = btoa(unescape(encodeURIComponent(json)))
     try {
-      await navigator.clipboard.writeText(encoded)
+      const data = exportData()
+      const json = JSON.stringify(data)
+      await navigator.clipboard.writeText(json)
       showToast('Data silsilah berhasil disalin! Bagikan ke keluarga untuk diimpor.')
-    } catch {
+      onClose()
+    } catch (err) {
+      console.log('[v0] Copy share data error:', err)
       showToast('Gagal menyalin data')
     }
   }
 
   // Save tree as image
   const handleSaveAsImage = async () => {
+    // Close drawer first to capture clean tree
+    onClose()
+    
+    // Small delay to allow drawer to close
+    await new Promise(resolve => setTimeout(resolve, 300))
+    
     const treeElement = document.querySelector('[data-tree-canvas]')
     if (!treeElement) {
-      showToast('Tree tidak ditemukan')
+      showToast('Buka halaman Pohon terlebih dahulu')
       return
     }
+
+    showToast('Menyiapkan gambar...')
 
     try {
       // Dynamically import html2canvas
       const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(treeElement as HTMLElement, {
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background').trim() || '#ffffff',
+      
+      // Get the inner content that contains the actual tree
+      const treeContent = treeElement.querySelector('div') as HTMLElement
+      const targetElement = treeContent || treeElement as HTMLElement
+      
+      const canvas = await html2canvas(targetElement, {
+        backgroundColor: '#f5f5f0', // Canvas background color
         scale: 2,
         useCORS: true,
         logging: false,
+        allowTaint: true,
+        foreignObjectRendering: false,
       })
       
+      // Create download link
       const link = document.createElement('a')
-      link.download = `nasabq-tree-${new Date().toISOString().split('T')[0]}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.download = `nasabq-silsilah-${new Date().toISOString().split('T')[0]}.png`
+      link.href = canvas.toDataURL('image/png', 1.0)
+      document.body.appendChild(link)
       link.click()
+      document.body.removeChild(link)
+      
       showToast('Gambar pohon keluarga berhasil disimpan!')
-    } catch {
-      showToast('Gagal menyimpan gambar')
+    } catch (err) {
+      console.log('[v0] Save image error:', err)
+      showToast('Gagal menyimpan gambar. Coba lagi.')
     }
   }
 
