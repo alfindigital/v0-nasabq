@@ -76,26 +76,26 @@ export function MemberList({ onViewMember }: MemberListProps) {
         <div className="p-3">
           {/* Row 1: Total and Gender breakdown */}
           <div className="grid grid-cols-3 gap-2 mb-2">
-            <div className="p-3 bg-card rounded-lg text-center">
+            <div className="p-2.5 bg-card rounded-lg text-center min-h-[60px] flex flex-col justify-center">
               <span className="font-display font-bold text-lg text-primary">{stats.total}</span>
-              <p className="text-[10px] text-muted-foreground">Total Anggota</p>
+              <p className="text-[10px] text-muted-foreground">Total</p>
             </div>
-            <div className="p-3 bg-card rounded-lg text-center">
+            <div className="p-2.5 bg-card rounded-lg text-center min-h-[60px] flex flex-col justify-center">
               <span className="font-display font-bold text-lg text-foreground">{stats.maleCount}</span>
               <p className="text-[10px] text-muted-foreground">Laki-laki</p>
             </div>
-            <div className="p-3 bg-card rounded-lg text-center">
+            <div className="p-2.5 bg-card rounded-lg text-center min-h-[60px] flex flex-col justify-center">
               <span className="font-display font-bold text-lg text-female-accent">{stats.femaleCount}</span>
               <p className="text-[10px] text-muted-foreground">Perempuan</p>
             </div>
           </div>
           {/* Row 2: Families and Generations */}
           <div className="grid grid-cols-2 gap-2">
-            <div className="p-3 bg-card rounded-lg text-center">
+            <div className="p-2.5 bg-card rounded-lg text-center min-h-[60px] flex flex-col justify-center">
               <span className="font-display font-bold text-lg">{stats.spousePairs}</span>
               <p className="text-[10px] text-muted-foreground">Keluarga</p>
             </div>
-            <div className="p-3 bg-card rounded-lg text-center">
+            <div className="p-2.5 bg-card rounded-lg text-center min-h-[60px] flex flex-col justify-center">
               <span className="font-display font-bold text-lg text-gold">{stats.generations}</span>
               <p className="text-[10px] text-muted-foreground">Generasi</p>
             </div>
@@ -125,20 +125,8 @@ export function MemberList({ onViewMember }: MemberListProps) {
         </div>
       </div>
 
-      {/* Table Header - Horizontally scrollable */}
-      <div className="sticky top-[180px] z-10 bg-muted/80 border-b border-border overflow-x-auto">
-        <div className="min-w-[600px] grid grid-cols-[minmax(120px,1.5fr)_60px_60px_minmax(100px,1fr)_minmax(120px,1.5fr)_40px] gap-2 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-          <div>Nama</div>
-          <div className="text-center">L/P</div>
-          <div className="text-center">Lahir</div>
-          <div>Domisili</div>
-          <div>Catatan</div>
-          <div></div>
-        </div>
-      </div>
-
-      {/* Member List - Horizontally scrollable */}
-      <div className="flex-1 overflow-y-auto overflow-x-auto">
+      {/* Table with unified horizontal scroll - no visible scrollbar */}
+      <div className="flex-1 overflow-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {filteredMembers.length === 0 ? (
           <div className="h-full flex items-center justify-center p-4">
             <p className="text-sm text-muted-foreground">
@@ -146,7 +134,20 @@ export function MemberList({ onViewMember }: MemberListProps) {
             </p>
           </div>
         ) : (
-          <div className="min-w-[600px] divide-y divide-border/50">
+          <div className="min-w-[600px]">
+            {/* Table Header */}
+            <div className="sticky top-0 z-10 bg-muted/95 border-b border-border">
+              <div className="grid grid-cols-[minmax(120px,1.5fr)_60px_60px_minmax(100px,1fr)_minmax(120px,1.5fr)_40px] gap-2 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                <div>Nama</div>
+                <div className="text-center">L/P</div>
+                <div className="text-center">Lahir</div>
+                <div>Domisili</div>
+                <div>Catatan</div>
+                <div></div>
+              </div>
+            </div>
+            {/* Table Body */}
+            <div className="divide-y divide-border/50">
             {filteredMembers.map(member => (
               <button
                 key={member.id}
@@ -212,6 +213,7 @@ export function MemberList({ onViewMember }: MemberListProps) {
                 </div>
               </button>
             ))}
+            </div>
           </div>
         )}
       </div>

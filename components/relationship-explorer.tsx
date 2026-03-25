@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import { Search, ChevronDown, User } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
-import { getRelationshipLabel } from '@/lib/relationship'
+import { getRelationshipLabel, getMahramStatus } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
 
 interface RelationshipExplorerProps {
@@ -41,10 +41,16 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
 
   const result = useMemo(() => {
     if (mode === 'between' && selectedMember1 && selectedMember2) {
-      return getRelationshipLabel(selectedMember2, selectedMember1, members, getParents, getChildren, getSpouses)
+      const relationLabel = getRelationshipLabel(selectedMember2, selectedMember1, members, getParents, getChildren, getSpouses)
+      // Get mahram status from perspective of member2 looking at member1
+      const mahramStatus = getMahramStatus(selectedMember1, selectedMember2, members, getParents, getChildren, getSpouses, getSiblings)
+      return {
+        ...relationLabel,
+        mahramStatus
+      }
     }
     return null
-  }, [mode, selectedMember1, selectedMember2, members, getParents, getChildren, getSpouses])
+  }, [mode, selectedMember1, selectedMember2, members, getParents, getChildren, getSpouses, getSiblings])
 
   const familyMap = useMemo(() => {
     if (mode !== 'map' || !self) return null
@@ -409,6 +415,23 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                   <p className="text-sm text-muted-foreground">
                     dari <span className="font-semibold text-foreground">{member2.nickname || member2.name}</span>
                   </p>
+                  {/* Mahram status indicator */}
+                  {member1.gender !== member2.gender && (
+                    <div className="pt-3 border-t border-primary/20 mt-3">
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                        result.mahramStatus === 'mahram' || result.mahramStatus === 'spouse'
+                          ? 'bg-green-500/20 text-green-700 dark:text-green-400'
+                          : 'bg-red-500/20 text-red-700 dark:text-red-400'
+                      }`}>
+                        <span className={`w-2.5 h-2.5 rounded-full ${
+                          result.mahramStatus === 'mahram' || result.mahramStatus === 'spouse' ? 'bg-green-500' : 'bg-red-500'
+                        }`} />
+                        {result.mahramStatus === 'mahram' || result.mahramStatus === 'spouse' 
+                          ? 'Mahram (boleh bersentuhan)' 
+                          : 'Non-Mahram (tidak boleh bersentuhan)'}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
