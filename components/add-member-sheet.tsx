@@ -331,7 +331,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       gender === 'M' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border hover:border-primary/50'
                     }`}
                   >
-                    L
+                    Laki-laki
                   </button>
                   <button
                     type="button"
@@ -343,7 +343,7 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                       gender === 'F' ? 'bg-primary text-primary-foreground' : 'bg-card border border-border hover:border-primary/50'
                     }`}
                   >
-                    P
+                    Perempuan
                   </button>
                 </div>
                 {errors.gender && <p className="text-xs text-destructive mt-1">{errors.gender}</p>}
@@ -425,11 +425,16 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     {relationships.map((rel, idx) => {
                       const member = getMember(rel.memberId)
                       if (!member) return null
+                      const memberName = member.nickname || member.name.split(' ')[0]
+                      const relationText = {
+                        child: `Anak dari ${memberName}`,
+                        parent: `Orang tua dari ${memberName}`,
+                        spouse: `Pasangan dari ${memberName}`
+                      }
                       return (
-                        <div key={idx} className="flex items-center gap-2 p-2 bg-muted rounded-lg">
+                        <div key={idx} className="flex items-center gap-2 p-2 bg-primary/10 border border-primary/20 rounded-lg">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{member.nickname || member.name}</p>
-                            <p className="text-xs text-muted-foreground">{getRelationLabel(rel.type)}</p>
+                            <p className="text-sm font-medium text-primary truncate">{relationText[rel.type]}</p>
                           </div>
                           <button
                             type="button"
@@ -487,21 +492,35 @@ export function AddMemberSheet({ open, onClose, context, onAdded }: AddMemberShe
                     )}
 
                     {newRelMemberId && (
-                      <div className="flex gap-2">
-                        {(['child', 'parent', 'spouse'] as const).map(type => (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => setNewRelType(type)}
-                            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
-                              newRelType === type
-                                ? 'bg-primary text-primary-foreground'
-                                : 'bg-background border border-border hover:border-primary/30'
-                            }`}
-                          >
-                            {getRelationLabel(type)}
-                          </button>
-                        ))}
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground text-center">
+                          <span className="font-medium text-foreground">{name || 'Anggota baru'}</span> adalah:
+                        </p>
+                        <div className="flex gap-2">
+                          {(['child', 'parent', 'spouse'] as const).map(type => {
+                            const selectedMember = members.find(m => m.id === newRelMemberId)
+                            const memberName = selectedMember?.nickname || selectedMember?.name.split(' ')[0] || ''
+                            const labelMap = {
+                              child: `Anak dari ${memberName}`,
+                              parent: `Orang tua dari ${memberName}`,
+                              spouse: `Pasangan dari ${memberName}`
+                            }
+                            return (
+                              <button
+                                key={type}
+                                type="button"
+                                onClick={() => setNewRelType(type)}
+                                className={`flex-1 py-2 text-xs font-medium rounded-lg transition-colors ${
+                                  newRelType === type
+                                    ? 'bg-primary text-primary-foreground'
+                                    : 'bg-background border border-border hover:border-primary/30'
+                                }`}
+                              >
+                                {labelMap[type]}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </div>
                     )}
 
