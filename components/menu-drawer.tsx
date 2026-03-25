@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { X, Download, Upload, Trash2, Info, User, Type, Heart, Share2, Copy, FileImage, ChevronRight } from 'lucide-react'
+import { X, Download, Upload, Trash2, Info, User, Type, Heart, Copy, FileImage, ChevronRight } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { ConfirmDialog } from './confirm-dialog'
 import { getRelationToSelf } from '@/lib/relationship'
@@ -18,7 +18,6 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showShare, setShowShare] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { members, settings, exportData, importData, clearAllData, setFontSize, getParents, getChildren, getSpouses } = useNasabStore()
@@ -566,44 +565,20 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Bagikan</h3>
             <div className="space-y-2">
-              <div>
-                <button
-                  onClick={() => setShowShare(!showShare)}
-                  className="w-full p-3 bg-primary/10 rounded-lg flex items-center gap-3 hover:bg-primary/20 transition-colors"
-                >
-                  <Share2 className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium text-primary flex-1 text-left">Bagikan Silsilah</span>
-                  <ChevronRight className={`w-4 h-4 text-primary transition-transform ${showShare ? 'rotate-90' : ''}`} />
-                </button>
-
-                {showShare && (
-                  <div className="mt-2 space-y-2">
-                    {/* Copy Silsilah Text */}
-                    <button
-                      onClick={handleCopySilsilah}
-                      className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-medium block">Salin Teks Silsilah</span>
-                        <span className="text-[10px] text-muted-foreground">Format teks untuk dibagikan</span>
-                      </div>
-                    </button>
-
-                    {/* Save as Image */}
-                    <button
-                      onClick={handleSaveAsImage}
-                      className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
-                    >
-                      <FileImage className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-medium block">Simpan Gambar Pohon</span>
-                        <span className="text-[10px] text-muted-foreground">Export sebagai gambar JPG</span>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={handleCopySilsilah}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
+              >
+                <Copy className="w-5 h-5" />
+                <span className="text-sm font-medium">Salin Teks Silsilah</span>
+              </button>
+              <button
+                onClick={handleSaveAsImage}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
+              >
+                <FileImage className="w-5 h-5" />
+                <span className="text-sm font-medium">Simpan Gambar Pohon</span>
+              </button>
             </div>
           </section>
 
