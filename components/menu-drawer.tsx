@@ -96,141 +96,311 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
     }
   }
 
-  // Save tree as image - generate SVG-based image
+  // Save tree as beautiful JPG image using Canvas
   const handleSaveAsImage = () => {
     if (!self) {
       showToast('Tidak ada data untuk disimpan')
       return
     }
 
-    // Generate a simple family tree representation as downloadable text/image
-    const generateTreeSVG = () => {
-      const width = 800
-      const nodeHeight = 60
-      const nodeWidth = 150
-      const verticalGap = 40
-      
-      // Build hierarchy
-      const buildHierarchy = (memberId: number, level: number = 0, visited = new Set<number>()): { member: typeof members[0], level: number, children: ReturnType<typeof buildHierarchy>[] } | null => {
-        if (visited.has(memberId)) return null
-        visited.add(memberId)
-        
-        const member = members.find(m => m.id === memberId)
-        if (!member) return null
-        
-        const children = getChildren(memberId)
-          .map(child => buildHierarchy(child.id, level + 1, new Set(visited)))
-          .filter((c): c is NonNullable<typeof c> => c !== null)
-        
-        return { member, level, children }
-      }
-
-      // Find root (oldest generation)
-      const roots = members.filter(m => getParents(m.id).length === 0)
-      
-      // Generate SVG content
-      let svgContent = ''
-      let y = 40
-      const processedIds = new Set<number>()
-
-      const drawMember = (member: typeof members[0], x: number, currentY: number, indent: number = 0) => {
-        if (processedIds.has(member.id)) return currentY
-        processedIds.add(member.id)
-        
-        const bgColor = member.isSelf ? '#10b981' : member.gender === 'M' ? '#0d6a51' : '#db4f8a'
-        const textColor = '#ffffff'
-        const name = member.nickname || member.name.split(' ')[0]
-        const label = member.isSelf ? ' (Kamu)' : ''
-        const deceased = member.isDeceased ? ' *' : ''
-        
-        svgContent += `
-          <rect x="${x + indent * 20}" y="${currentY}" width="${nodeWidth}" height="${nodeHeight - 10}" rx="8" fill="${bgColor}" />
-          <text x="${x + indent * 20 + nodeWidth/2}" y="${currentY + 25}" text-anchor="middle" fill="${textColor}" font-family="system-ui, sans-serif" font-size="12" font-weight="600">${name}${label}${deceased}</text>
-          ${member.birthYear ? `<text x="${x + indent * 20 + nodeWidth/2}" y="${currentY + 42}" text-anchor="middle" fill="${textColor}" font-family="system-ui, sans-serif" font-size="10" opacity="0.8">${member.birthYear}</text>` : ''}
-        `
-        
-        return currentY + nodeHeight + verticalGap / 2
-      }
-
-      // Sort members by generation
-      const getGen = (id: number, visited = new Set<number>()): number => {
-        if (visited.has(id)) return 0
-        visited.add(id)
-        const parents = getParents(id)
-        if (parents.length === 0) return 0
-        return 1 + Math.max(...parents.map(p => getGen(p.id, new Set(visited))))
-      }
-
-      const sortedMembers = [...members].sort((a, b) => {
-        const genDiff = getGen(a.id) - getGen(b.id)
-        if (genDiff !== 0) return genDiff
-        if (a.isSelf) return -1
-        if (b.isSelf) return 1
-        return a.name.localeCompare(b.name)
-      })
-
-      // Group by generation
-      const generations = new Map<number, typeof members>()
-      sortedMembers.forEach(m => {
-        const gen = getGen(m.id)
-        if (!generations.has(gen)) generations.set(gen, [])
-        generations.get(gen)!.push(m)
-      })
-
-      // Draw by generation
-      let currentY = 60
-      const sortedGens = [...generations.entries()].sort((a, b) => a[0] - b[0])
-      
-      sortedGens.forEach(([gen, genMembers]) => {
-        // Generation label
-        svgContent += `<text x="20" y="${currentY}" font-family="system-ui, sans-serif" font-size="11" fill="#666" font-weight="500">Generasi ${gen}</text>`
-        currentY += 20
-        
-        // Draw members in this generation
-        let x = 20
-        genMembers.forEach((member, idx) => {
-          if (x + nodeWidth > width - 20) {
-            x = 20
-            currentY += nodeHeight + 10
-          }
-          
-          const bgColor = member.isSelf ? '#10b981' : member.gender === 'M' ? '#0d6a51' : '#db4f8a'
-          const name = (member.nickname || member.name.split(' ')[0]).substring(0, 12)
-          const label = member.isSelf ? '*' : ''
-          const deceased = member.isDeceased ? ' (Alm)' : ''
-          
-          svgContent += `
-            <rect x="${x}" y="${currentY}" width="${nodeWidth}" height="${nodeHeight - 10}" rx="8" fill="${bgColor}" />
-            <text x="${x + nodeWidth/2}" y="${currentY + 22}" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">${name}${label}</text>
-            <text x="${x + nodeWidth/2}" y="${currentY + 38}" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="9" opacity="0.8">${member.birthYear || ''}${deceased}</text>
-          `
-          x += nodeWidth + 15
-        })
-        currentY += nodeHeight + 25
-      })
-
-      const totalHeight = currentY + 60
-
-      return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${totalHeight}" viewBox="0 0 ${width} ${totalHeight}">
-  <rect width="100%" height="100%" fill="#f5f5f0"/>
-  <text x="${width/2}" y="30" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="bold" fill="#0d6a51">Silsilah Keluarga - NasabQ</text>
-  ${svgContent}
-  <text x="${width/2}" y="${totalHeight - 15}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#999">* = Kamu | Total: ${members.length} anggota | Generated by NasabQ</text>
-</svg>`
+    // Calculate generation for each member
+    const getGen = (id: number, visited = new Set<number>()): number => {
+      if (visited.has(id)) return 0
+      visited.add(id)
+      const parents = getParents(id)
+      if (parents.length === 0) return 0
+      return 1 + Math.max(...parents.map(p => getGen(p.id, new Set(visited))))
     }
 
+    // Group members by generation
+    const generations = new Map<number, typeof members>()
+    members.forEach(m => {
+      const gen = getGen(m.id)
+      if (!generations.has(gen)) generations.set(gen, [])
+      generations.get(gen)!.push(m)
+    })
+    const sortedGens = [...generations.entries()].sort((a, b) => a[0] - b[0])
+
+    // Canvas settings
+    const padding = 60
+    const nodeWidth = 180
+    const nodeHeight = 70
+    const nodeGapX = 24
+    const nodeGapY = 40
+    const genLabelHeight = 50
+
+    // Calculate dimensions
+    const maxNodesInRow = Math.max(...sortedGens.map(([, m]) => m.length))
+    const canvasWidth = Math.max(800, padding * 2 + maxNodesInRow * (nodeWidth + nodeGapX) - nodeGapX)
+    const headerHeight = 120
+    const footerHeight = 80
+    const contentHeight = sortedGens.length * (nodeHeight + nodeGapY + genLabelHeight)
+    const canvasHeight = headerHeight + contentHeight + footerHeight
+
+    // Create canvas
+    const canvas = document.createElement('canvas')
+    const scale = 2 // For high DPI
+    canvas.width = canvasWidth * scale
+    canvas.height = canvasHeight * scale
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(scale, scale)
+
+    // Background gradient
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, canvasHeight)
+    bgGradient.addColorStop(0, '#f8faf8')
+    bgGradient.addColorStop(1, '#e8f0e8')
+    ctx.fillStyle = bgGradient
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+    // Decorative pattern (subtle)
+    ctx.strokeStyle = 'rgba(13, 106, 81, 0.03)'
+    ctx.lineWidth = 1
+    for (let i = 0; i < canvasWidth; i += 30) {
+      ctx.beginPath()
+      ctx.moveTo(i, 0)
+      ctx.lineTo(i, canvasHeight)
+      ctx.stroke()
+    }
+    for (let i = 0; i < canvasHeight; i += 30) {
+      ctx.beginPath()
+      ctx.moveTo(0, i)
+      ctx.lineTo(canvasWidth, i)
+      ctx.stroke()
+    }
+
+    // Header background
+    const headerGradient = ctx.createLinearGradient(0, 0, canvasWidth, 0)
+    headerGradient.addColorStop(0, '#0d6a51')
+    headerGradient.addColorStop(0.5, '#10b981')
+    headerGradient.addColorStop(1, '#0d6a51')
+    ctx.fillStyle = headerGradient
+    ctx.fillRect(0, 0, canvasWidth, headerHeight - 20)
+
+    // Header curve
+    ctx.beginPath()
+    ctx.moveTo(0, headerHeight - 20)
+    ctx.quadraticCurveTo(canvasWidth / 2, headerHeight + 10, canvasWidth, headerHeight - 20)
+    ctx.lineTo(canvasWidth, headerHeight - 20)
+    ctx.fill()
+
+    // Tree icon in header
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
+    ctx.beginPath()
+    ctx.arc(canvasWidth / 2, 45, 25, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // Simple tree symbol
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    // Trunk
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2, 55)
+    ctx.lineTo(canvasWidth / 2, 38)
+    ctx.stroke()
+    // Branches
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2 - 12, 45)
+    ctx.lineTo(canvasWidth / 2, 32)
+    ctx.lineTo(canvasWidth / 2 + 12, 45)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2 - 8, 38)
+    ctx.lineTo(canvasWidth / 2, 28)
+    ctx.lineTo(canvasWidth / 2 + 8, 38)
+    ctx.stroke()
+
+    // Title
+    ctx.fillStyle = '#ffffff'
+    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('NASABQ', canvasWidth / 2, 85)
+    
+    ctx.font = '14px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.fillText('Silsilah Keluarga', canvasWidth / 2, 105)
+
+    // Draw generations
+    let currentY = headerHeight + 20
+
+    sortedGens.forEach(([gen, genMembers], genIndex) => {
+      // Generation label with decorative line
+      const labelY = currentY + 20
+      
+      ctx.fillStyle = '#0d6a51'
+      ctx.font = 'bold 14px system-ui, -apple-system, sans-serif'
+      ctx.textAlign = 'center'
+      
+      const labelText = gen === 0 ? 'Generasi Pertama (Tertua)' : `Generasi ${gen + 1}`
+      const labelWidth = ctx.measureText(labelText).width
+      
+      // Decorative lines beside label
+      ctx.strokeStyle = '#0d6a51'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(padding, labelY - 5)
+      ctx.lineTo(canvasWidth / 2 - labelWidth / 2 - 20, labelY - 5)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(canvasWidth / 2 + labelWidth / 2 + 20, labelY - 5)
+      ctx.lineTo(canvasWidth - padding, labelY - 5)
+      ctx.stroke()
+      
+      ctx.fillText(labelText, canvasWidth / 2, labelY)
+      
+      currentY += genLabelHeight
+
+      // Calculate starting X to center nodes
+      const totalRowWidth = genMembers.length * (nodeWidth + nodeGapX) - nodeGapX
+      let startX = (canvasWidth - totalRowWidth) / 2
+
+      // Draw nodes
+      genMembers.forEach((member, idx) => {
+        const x = startX + idx * (nodeWidth + nodeGapX)
+        const y = currentY
+
+        // Node shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
+        ctx.beginPath()
+        ctx.roundRect(x + 4, y + 4, nodeWidth, nodeHeight, 12)
+        ctx.fill()
+
+        // Node background gradient
+        let nodeGradient: CanvasGradient
+        if (member.isSelf) {
+          nodeGradient = ctx.createLinearGradient(x, y, x, y + nodeHeight)
+          nodeGradient.addColorStop(0, '#10b981')
+          nodeGradient.addColorStop(1, '#059669')
+        } else if (member.gender === 'M') {
+          nodeGradient = ctx.createLinearGradient(x, y, x, y + nodeHeight)
+          nodeGradient.addColorStop(0, '#0d6a51')
+          nodeGradient.addColorStop(1, '#064e3b')
+        } else {
+          nodeGradient = ctx.createLinearGradient(x, y, x, y + nodeHeight)
+          nodeGradient.addColorStop(0, '#ec4899')
+          nodeGradient.addColorStop(1, '#db2777')
+        }
+
+        ctx.fillStyle = nodeGradient
+        ctx.beginPath()
+        ctx.roundRect(x, y, nodeWidth, nodeHeight, 12)
+        ctx.fill()
+
+        // Deceased indicator (subtle pattern)
+        if (member.isDeceased) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
+          ctx.lineWidth = 1
+          for (let i = x; i < x + nodeWidth; i += 8) {
+            ctx.beginPath()
+            ctx.moveTo(i, y)
+            ctx.lineTo(i + nodeHeight, y + nodeHeight)
+            ctx.stroke()
+          }
+        }
+
+        // Self indicator badge
+        if (member.isSelf) {
+          ctx.fillStyle = '#fbbf24'
+          ctx.beginPath()
+          ctx.arc(x + nodeWidth - 12, y + 12, 8, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = '#000'
+          ctx.font = 'bold 10px system-ui'
+          ctx.textAlign = 'center'
+          ctx.fillText('★', x + nodeWidth - 12, y + 16)
+        }
+
+        // Name
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 14px system-ui, -apple-system, sans-serif'
+        ctx.textAlign = 'center'
+        let displayName = member.nickname || member.name.split(' ')[0]
+        if (displayName.length > 14) displayName = displayName.substring(0, 12) + '..'
+        ctx.fillText(displayName, x + nodeWidth / 2, y + 28)
+
+        // Full name (smaller)
+        if (member.nickname && member.name !== member.nickname) {
+          ctx.font = '10px system-ui, -apple-system, sans-serif'
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          let fullName = member.name
+          if (fullName.length > 20) fullName = fullName.substring(0, 18) + '..'
+          ctx.fillText(fullName, x + nodeWidth / 2, y + 42)
+        }
+
+        // Birth year & status
+        ctx.font = '11px system-ui, -apple-system, sans-serif'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+        const info = []
+        if (member.birthYear) info.push(member.birthYear.toString())
+        if (member.isDeceased) info.push('Almarhum/ah')
+        if (info.length > 0) {
+          ctx.fillText(info.join(' - '), x + nodeWidth / 2, y + nodeHeight - 12)
+        }
+      })
+
+      currentY += nodeHeight + nodeGapY
+    })
+
+    // Footer
+    const footerY = canvasHeight - footerHeight + 20
+    
+    // Footer line
+    ctx.strokeStyle = '#0d6a51'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(padding, footerY)
+    ctx.lineTo(canvasWidth - padding, footerY)
+    ctx.stroke()
+
+    // Stats
+    ctx.fillStyle = '#0d6a51'
+    ctx.font = '12px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    const maleCount = members.filter(m => m.gender === 'M').length
+    const femaleCount = members.filter(m => m.gender === 'F').length
+    ctx.fillText(
+      `Total: ${members.length} anggota  |  Laki-laki: ${maleCount}  |  Perempuan: ${femaleCount}  |  Generasi: ${sortedGens.length}`,
+      canvasWidth / 2, footerY + 25
+    )
+
+    // Legend
+    ctx.font = '10px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = '#666'
+    const legendY = footerY + 45
+    const legendItems = [
+      { color: '#10b981', label: 'Kamu' },
+      { color: '#0d6a51', label: 'Laki-laki' },
+      { color: '#ec4899', label: 'Perempuan' },
+    ]
+    const legendWidth = 200
+    const legendStartX = (canvasWidth - legendWidth) / 2
+    
+    legendItems.forEach((item, i) => {
+      const lx = legendStartX + i * 70
+      ctx.fillStyle = item.color
+      ctx.beginPath()
+      ctx.roundRect(lx, legendY - 8, 12, 12, 3)
+      ctx.fill()
+      ctx.fillStyle = '#666'
+      ctx.textAlign = 'left'
+      ctx.fillText(item.label, lx + 16, legendY + 2)
+    })
+
+    // Watermark
+    ctx.fillStyle = '#999'
+    ctx.font = '10px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('Generated by NasabQ - Kenali Akar Keluargamu', canvasWidth / 2, canvasHeight - 15)
+
+    // Convert to JPG and download
     try {
-      const svg = generateTreeSVG()
-      const blob = new Blob([svg], { type: 'image/svg+xml' })
-      const url = URL.createObjectURL(blob)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
       const link = document.createElement('a')
-      link.href = url
-      link.download = `nasabq-silsilah-${new Date().toISOString().split('T')[0]}.svg`
+      link.href = dataUrl
+      link.download = `nasabq-silsilah-${new Date().toISOString().split('T')[0]}.jpg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
       showToast('Gambar silsilah berhasil disimpan!')
       onClose()
     } catch {
@@ -428,7 +598,7 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
                       <FileImage className="w-4 h-4" />
                       <div className="flex-1 text-left">
                         <span className="text-sm font-medium block">Simpan Gambar Pohon</span>
-                        <span className="text-[10px] text-muted-foreground">Export sebagai gambar SVG</span>
+                        <span className="text-[10px] text-muted-foreground">Export sebagai gambar JPG</span>
                       </div>
                     </button>
                   </div>
