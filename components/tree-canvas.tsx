@@ -549,6 +549,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   return (
     <div
       ref={canvasRef}
+      data-tree-canvas
       className={`h-full bg-canvas canvas-pattern overflow-hidden relative select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
