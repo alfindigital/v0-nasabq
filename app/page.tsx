@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useNasabStore } from '@/lib/store'
-import { Onboarding } from '@/components/onboarding'
+import { OnboardingPopup } from '@/components/onboarding-popup'
+import { NasabLogo } from '@/components/nasab-logo'
 import { Header } from '@/components/header'
 import { BottomNav } from '@/components/bottom-nav'
 import { TreeCanvas } from '@/components/tree-canvas'
@@ -27,6 +28,7 @@ export default function Home() {
     relationshipType?: 'child' | 'parent' | 'spouse'
   } | null>(null)
   const [toast, setToast] = useState<{ message: string } | null>(null)
+  const [showOnboarding, setShowOnboarding] = useState(false)
   
   const { members, settings, toggleDarkMode } = useNasabStore()
   const self = members.find(m => m.isSelf)
@@ -34,6 +36,13 @@ export default function Home() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Show onboarding popup if no self member exists
+  useEffect(() => {
+    if (mounted && !self) {
+      setShowOnboarding(true)
+    }
+  }, [mounted, self])
 
   useEffect(() => {
     if (settings.darkMode) {
@@ -94,19 +103,11 @@ export default function Home() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="font-display font-extrabold text-2xl tracking-[3px] text-primary">NASAB</h1>
+        <div className="flex flex-col items-center text-center">
+          <NasabLogo size="lg" showText textSize="lg" />
+          <p className="text-sm text-muted-foreground mt-2">Kenali Akar Keluargamu</p>
         </div>
       </div>
-    )
-  }
-
-  // Show onboarding if no self member exists
-  if (!self) {
-    return (
-      <Onboarding 
-        onComplete={(name) => showToast(`Ahlan, ${name}!`)} 
-      />
     )
   }
 
@@ -124,7 +125,6 @@ export default function Home() {
         {activeView === 'list' && (
           <MemberList 
             onViewMember={handleViewMember}
-            onAddMember={() => handleAddMember()}
           />
         )}
         {activeView === 'relationship' && (
@@ -156,6 +156,10 @@ export default function Home() {
         open={addSheetOpen}
         onClose={() => {
           setAddSheetOpen(false)
+          // If opened from member detail (has context with targetId), return to detail sheet
+          if (addContext?.targetId && selectedMember) {
+            setDetailSheetOpen(true)
+          }
           setAddContext(null)
         }}
         context={addContext}
@@ -176,6 +180,15 @@ export default function Home() {
 
       {toast && <Toast message={toast.message} />}
       <InstallBanner />
+
+      {/* Onboarding popup - mandatory when no self exists */}
+      <OnboardingPopup
+        open={showOnboarding}
+        onComplete={(name) => {
+          setShowOnboarding(false)
+          showToast(`Ahlan, ${name}!`)
+        }}
+      />
     </div>
   )
 }

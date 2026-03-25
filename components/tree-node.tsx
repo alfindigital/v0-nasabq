@@ -97,18 +97,14 @@ export function TreeNode({
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        {/* Mahram indicator light */}
+        {/* Mahram indicator light - green = mahram (boleh bersentuhan), red = non-mahram (tidak boleh bersentuhan) */}
         {showMahramIndicator && (
           <div 
             className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-card shadow-sm ${
-              mahramStatus === 'mahram' ? 'bg-green-500' : 
-              mahramStatus === 'spouse' ? 'bg-pink-500' : 
-              'bg-red-500'
+              mahramStatus === 'mahram' || mahramStatus === 'spouse' ? 'bg-green-500' : 'bg-red-500'
             }`}
             title={
-              mahramStatus === 'mahram' ? 'Mahram' : 
-              mahramStatus === 'spouse' ? 'Pasangan' : 
-              'Non-Mahram'
+              mahramStatus === 'mahram' || mahramStatus === 'spouse' ? 'Mahram (boleh bersentuhan)' : 'Non-Mahram (tidak boleh bersentuhan)'
             }
           />
         )}

@@ -487,11 +487,18 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
 
   const handleToggleAll = () => {
     const nodesWithChildren = members.filter(m => getChildren(m.id).length > 0).map(m => m.id)
-    if (collapsedNodes.size === 0) {
-      setCollapsedNodes(new Set(nodesWithChildren.filter(id => id !== self?.id)))
+    // Check if currently expanded (no collapsed nodes or only self is not collapsed)
+    const isExpanded = collapsedNodes.size === 0
+    if (isExpanded) {
+      // Collapse all nodes with children (except self to keep tree visible)
+      const toCollapse = nodesWithChildren.filter(id => id !== self?.id)
+      setCollapsedNodes(new Set(toCollapse))
     } else {
+      // Expand all - clear collapsed nodes
       setCollapsedNodes(new Set())
     }
+    // Fit to screen after toggle
+    setTimeout(handleFitToScreen, 100)
   }
 
   const handleNodeTap = (member: Member) => onViewMember(member)
@@ -542,6 +549,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
   return (
     <div
       ref={canvasRef}
+      data-tree-canvas
       className={`h-full bg-canvas canvas-pattern overflow-hidden relative select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
