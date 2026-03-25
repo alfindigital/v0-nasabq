@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useNasabStore } from '@/lib/store'
 import { OnboardingPopup } from '@/components/onboarding-popup'
+import { NasabLogo } from '@/components/nasab-logo'
 import { Header } from '@/components/header'
 import { BottomNav } from '@/components/bottom-nav'
 import { TreeCanvas } from '@/components/tree-canvas'
@@ -102,8 +103,9 @@ export default function Home() {
   if (!mounted) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="font-display font-extrabold text-2xl tracking-[3px] text-primary">NASAB</h1>
+        <div className="flex flex-col items-center text-center">
+          <NasabLogo size="lg" showText textSize="lg" />
+          <p className="text-sm text-muted-foreground mt-2">Kenali Akar Keluargamu</p>
         </div>
       </div>
     )
