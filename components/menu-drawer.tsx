@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { X, Download, Upload, Trash2, Info, User, Type, Heart, Share2, Copy, FileImage, Link2, ChevronRight } from 'lucide-react'
+import { X, Download, Upload, Trash2, Info, User, Type, Heart, Copy, FileImage, ChevronRight } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { ConfirmDialog } from './confirm-dialog'
 import { getRelationToSelf } from '@/lib/relationship'
@@ -18,7 +18,6 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
-  const [showShare, setShowShare] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   
   const { members, settings, exportData, importData, clearAllData, setFontSize, getParents, getChildren, getSpouses } = useNasabStore()
@@ -96,43 +95,313 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
     }
   }
 
-  // Copy share data (JSON) to clipboard
-  const handleCopyShareData = async () => {
-    const data = exportData()
-    const json = JSON.stringify(data)
-    // Encode to base64 for cleaner sharing
-    const encoded = btoa(unescape(encodeURIComponent(json)))
-    try {
-      await navigator.clipboard.writeText(encoded)
-      showToast('Data silsilah berhasil disalin! Bagikan ke keluarga untuk diimpor.')
-    } catch {
-      showToast('Gagal menyalin data')
-    }
-  }
-
-  // Save tree as image
-  const handleSaveAsImage = async () => {
-    const treeElement = document.querySelector('[data-tree-canvas]')
-    if (!treeElement) {
-      showToast('Tree tidak ditemukan')
+  // Save tree as beautiful JPG image using Canvas
+  const handleSaveAsImage = () => {
+    if (!self) {
+      showToast('Tidak ada data untuk disimpan')
       return
     }
 
-    try {
-      // Dynamically import html2canvas
-      const html2canvas = (await import('html2canvas')).default
-      const canvas = await html2canvas(treeElement as HTMLElement, {
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--background').trim() || '#ffffff',
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      })
+    // Calculate generation for each member
+    const getGen = (id: number, visited = new Set<number>()): number => {
+      if (visited.has(id)) return 0
+      visited.add(id)
+      const parents = getParents(id)
+      if (parents.length === 0) return 0
+      return 1 + Math.max(...parents.map(p => getGen(p.id, new Set(visited))))
+    }
+
+    // Group members by generation
+    const generations = new Map<number, typeof members>()
+    members.forEach(m => {
+      const gen = getGen(m.id)
+      if (!generations.has(gen)) generations.set(gen, [])
+      generations.get(gen)!.push(m)
+    })
+    const sortedGens = [...generations.entries()].sort((a, b) => a[0] - b[0])
+
+    // Canvas settings
+    const padding = 60
+    const nodeWidth = 180
+    const nodeHeight = 70
+    const nodeGapX = 24
+    const nodeGapY = 40
+    const genLabelHeight = 50
+
+    // Calculate dimensions
+    const maxNodesInRow = Math.max(...sortedGens.map(([, m]) => m.length))
+    const canvasWidth = Math.max(800, padding * 2 + maxNodesInRow * (nodeWidth + nodeGapX) - nodeGapX)
+    const headerHeight = 120
+    const footerHeight = 80
+    const contentHeight = sortedGens.length * (nodeHeight + nodeGapY + genLabelHeight)
+    const canvasHeight = headerHeight + contentHeight + footerHeight
+
+    // Create canvas
+    const canvas = document.createElement('canvas')
+    const scale = 2 // For high DPI
+    canvas.width = canvasWidth * scale
+    canvas.height = canvasHeight * scale
+    const ctx = canvas.getContext('2d')!
+    ctx.scale(scale, scale)
+
+    // Background gradient
+    const bgGradient = ctx.createLinearGradient(0, 0, 0, canvasHeight)
+    bgGradient.addColorStop(0, '#f8faf8')
+    bgGradient.addColorStop(1, '#e8f0e8')
+    ctx.fillStyle = bgGradient
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight)
+
+    // Decorative pattern (subtle)
+    ctx.strokeStyle = 'rgba(13, 106, 81, 0.03)'
+    ctx.lineWidth = 1
+    for (let i = 0; i < canvasWidth; i += 30) {
+      ctx.beginPath()
+      ctx.moveTo(i, 0)
+      ctx.lineTo(i, canvasHeight)
+      ctx.stroke()
+    }
+    for (let i = 0; i < canvasHeight; i += 30) {
+      ctx.beginPath()
+      ctx.moveTo(0, i)
+      ctx.lineTo(canvasWidth, i)
+      ctx.stroke()
+    }
+
+    // Header background
+    const headerGradient = ctx.createLinearGradient(0, 0, canvasWidth, 0)
+    headerGradient.addColorStop(0, '#0d6a51')
+    headerGradient.addColorStop(0.5, '#10b981')
+    headerGradient.addColorStop(1, '#0d6a51')
+    ctx.fillStyle = headerGradient
+    ctx.fillRect(0, 0, canvasWidth, headerHeight - 20)
+
+    // Header curve
+    ctx.beginPath()
+    ctx.moveTo(0, headerHeight - 20)
+    ctx.quadraticCurveTo(canvasWidth / 2, headerHeight + 10, canvasWidth, headerHeight - 20)
+    ctx.lineTo(canvasWidth, headerHeight - 20)
+    ctx.fill()
+
+    // Tree icon in header
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)'
+    ctx.beginPath()
+    ctx.arc(canvasWidth / 2, 45, 25, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // Simple tree symbol
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 3
+    ctx.lineCap = 'round'
+    // Trunk
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2, 55)
+    ctx.lineTo(canvasWidth / 2, 38)
+    ctx.stroke()
+    // Branches
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2 - 12, 45)
+    ctx.lineTo(canvasWidth / 2, 32)
+    ctx.lineTo(canvasWidth / 2 + 12, 45)
+    ctx.stroke()
+    ctx.beginPath()
+    ctx.moveTo(canvasWidth / 2 - 8, 38)
+    ctx.lineTo(canvasWidth / 2, 28)
+    ctx.lineTo(canvasWidth / 2 + 8, 38)
+    ctx.stroke()
+
+    // Title
+    ctx.fillStyle = '#ffffff'
+    ctx.font = 'bold 28px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('NASABQ', canvasWidth / 2, 85)
+    
+    ctx.font = '14px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.fillText('Silsilah Keluarga', canvasWidth / 2, 105)
+
+    // Draw generations
+    let currentY = headerHeight + 20
+
+    sortedGens.forEach(([gen, genMembers], genIndex) => {
+      // Generation label with decorative line
+      const labelY = currentY + 20
       
+      ctx.fillStyle = '#0d6a51'
+      ctx.font = 'bold 14px system-ui, -apple-system, sans-serif'
+      ctx.textAlign = 'center'
+      
+      const labelText = gen === 0 ? 'Generasi Pertama (Tertua)' : `Generasi ${gen + 1}`
+      const labelWidth = ctx.measureText(labelText).width
+      
+      // Decorative lines beside label
+      ctx.strokeStyle = '#0d6a51'
+      ctx.lineWidth = 1
+      ctx.beginPath()
+      ctx.moveTo(padding, labelY - 5)
+      ctx.lineTo(canvasWidth / 2 - labelWidth / 2 - 20, labelY - 5)
+      ctx.stroke()
+      ctx.beginPath()
+      ctx.moveTo(canvasWidth / 2 + labelWidth / 2 + 20, labelY - 5)
+      ctx.lineTo(canvasWidth - padding, labelY - 5)
+      ctx.stroke()
+      
+      ctx.fillText(labelText, canvasWidth / 2, labelY)
+      
+      currentY += genLabelHeight
+
+      // Calculate starting X to center nodes
+      const totalRowWidth = genMembers.length * (nodeWidth + nodeGapX) - nodeGapX
+      let startX = (canvasWidth - totalRowWidth) / 2
+
+      // Draw nodes
+      genMembers.forEach((member, idx) => {
+        const x = startX + idx * (nodeWidth + nodeGapX)
+        const y = currentY
+
+        // Node shadow
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
+        ctx.beginPath()
+        ctx.roundRect(x + 4, y + 4, nodeWidth, nodeHeight, 12)
+        ctx.fill()
+
+        // Node background gradient
+        let nodeGradient: CanvasGradient
+        if (member.isSelf) {
+          nodeGradient = ctx.createLinearGradient(x, y, x, y + nodeHeight)
+          nodeGradient.addColorStop(0, '#10b981')
+          nodeGradient.addColorStop(1, '#059669')
+        } else if (member.gender === 'M') {
+          nodeGradient = ctx.createLinearGradient(x, y, x, y + nodeHeight)
+          nodeGradient.addColorStop(0, '#0d6a51')
+          nodeGradient.addColorStop(1, '#064e3b')
+        } else {
+          nodeGradient = ctx.createLinearGradient(x, y, x, y + nodeHeight)
+          nodeGradient.addColorStop(0, '#ec4899')
+          nodeGradient.addColorStop(1, '#db2777')
+        }
+
+        ctx.fillStyle = nodeGradient
+        ctx.beginPath()
+        ctx.roundRect(x, y, nodeWidth, nodeHeight, 12)
+        ctx.fill()
+
+        // Deceased indicator (subtle pattern)
+        if (member.isDeceased) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
+          ctx.lineWidth = 1
+          for (let i = x; i < x + nodeWidth; i += 8) {
+            ctx.beginPath()
+            ctx.moveTo(i, y)
+            ctx.lineTo(i + nodeHeight, y + nodeHeight)
+            ctx.stroke()
+          }
+        }
+
+        // Self indicator badge
+        if (member.isSelf) {
+          ctx.fillStyle = '#fbbf24'
+          ctx.beginPath()
+          ctx.arc(x + nodeWidth - 12, y + 12, 8, 0, Math.PI * 2)
+          ctx.fill()
+          ctx.fillStyle = '#000'
+          ctx.font = 'bold 10px system-ui'
+          ctx.textAlign = 'center'
+          ctx.fillText('★', x + nodeWidth - 12, y + 16)
+        }
+
+        // Name
+        ctx.fillStyle = '#ffffff'
+        ctx.font = 'bold 14px system-ui, -apple-system, sans-serif'
+        ctx.textAlign = 'center'
+        let displayName = member.nickname || member.name.split(' ')[0]
+        if (displayName.length > 14) displayName = displayName.substring(0, 12) + '..'
+        ctx.fillText(displayName, x + nodeWidth / 2, y + 28)
+
+        // Full name (smaller)
+        if (member.nickname && member.name !== member.nickname) {
+          ctx.font = '10px system-ui, -apple-system, sans-serif'
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          let fullName = member.name
+          if (fullName.length > 20) fullName = fullName.substring(0, 18) + '..'
+          ctx.fillText(fullName, x + nodeWidth / 2, y + 42)
+        }
+
+        // Birth year & status
+        ctx.font = '11px system-ui, -apple-system, sans-serif'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)'
+        const info = []
+        if (member.birthYear) info.push(member.birthYear.toString())
+        if (member.isDeceased) info.push('Almarhum/ah')
+        if (info.length > 0) {
+          ctx.fillText(info.join(' - '), x + nodeWidth / 2, y + nodeHeight - 12)
+        }
+      })
+
+      currentY += nodeHeight + nodeGapY
+    })
+
+    // Footer
+    const footerY = canvasHeight - footerHeight + 20
+    
+    // Footer line
+    ctx.strokeStyle = '#0d6a51'
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(padding, footerY)
+    ctx.lineTo(canvasWidth - padding, footerY)
+    ctx.stroke()
+
+    // Stats
+    ctx.fillStyle = '#0d6a51'
+    ctx.font = '12px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    const maleCount = members.filter(m => m.gender === 'M').length
+    const femaleCount = members.filter(m => m.gender === 'F').length
+    ctx.fillText(
+      `Total: ${members.length} anggota  |  Laki-laki: ${maleCount}  |  Perempuan: ${femaleCount}  |  Generasi: ${sortedGens.length}`,
+      canvasWidth / 2, footerY + 25
+    )
+
+    // Legend
+    ctx.font = '10px system-ui, -apple-system, sans-serif'
+    ctx.fillStyle = '#666'
+    const legendY = footerY + 45
+    const legendItems = [
+      { color: '#10b981', label: 'Kamu' },
+      { color: '#0d6a51', label: 'Laki-laki' },
+      { color: '#ec4899', label: 'Perempuan' },
+    ]
+    const legendWidth = 200
+    const legendStartX = (canvasWidth - legendWidth) / 2
+    
+    legendItems.forEach((item, i) => {
+      const lx = legendStartX + i * 70
+      ctx.fillStyle = item.color
+      ctx.beginPath()
+      ctx.roundRect(lx, legendY - 8, 12, 12, 3)
+      ctx.fill()
+      ctx.fillStyle = '#666'
+      ctx.textAlign = 'left'
+      ctx.fillText(item.label, lx + 16, legendY + 2)
+    })
+
+    // Watermark
+    ctx.fillStyle = '#999'
+    ctx.font = '10px system-ui, -apple-system, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.fillText('Generated by NasabQ - Kenali Akar Keluargamu', canvasWidth / 2, canvasHeight - 15)
+
+    // Convert to JPG and download
+    try {
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95)
       const link = document.createElement('a')
-      link.download = `nasabq-tree-${new Date().toISOString().split('T')[0]}.png`
-      link.href = canvas.toDataURL('image/png')
+      link.href = dataUrl
+      link.download = `nasabq-silsilah-${new Date().toISOString().split('T')[0]}.jpg`
+      document.body.appendChild(link)
       link.click()
-      showToast('Gambar pohon keluarga berhasil disimpan!')
+      document.body.removeChild(link)
+      showToast('Gambar silsilah berhasil disimpan!')
+      onClose()
     } catch {
       showToast('Gagal menyimpan gambar')
     }
@@ -296,56 +565,20 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
           <section>
             <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Bagikan</h3>
             <div className="space-y-2">
-              <div>
-                <button
-                  onClick={() => setShowShare(!showShare)}
-                  className="w-full p-3 bg-primary/10 rounded-lg flex items-center gap-3 hover:bg-primary/20 transition-colors"
-                >
-                  <Share2 className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-medium text-primary flex-1 text-left">Bagikan Silsilah</span>
-                  <ChevronRight className={`w-4 h-4 text-primary transition-transform ${showShare ? 'rotate-90' : ''}`} />
-                </button>
-
-                {showShare && (
-                  <div className="mt-2 space-y-2">
-                    {/* Copy Silsilah Text */}
-                    <button
-                      onClick={handleCopySilsilah}
-                      className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-medium block">Salin Teks Silsilah</span>
-                        <span className="text-[10px] text-muted-foreground">Format teks untuk dibagikan</span>
-                      </div>
-                    </button>
-
-                    {/* Copy Share Data */}
-                    <button
-                      onClick={handleCopyShareData}
-                      className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
-                    >
-                      <Link2 className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-medium block">Salin Data Silsilah</span>
-                        <span className="text-[10px] text-muted-foreground">Bagikan ke keluarga untuk diimpor</span>
-                      </div>
-                    </button>
-
-                    {/* Save as Image */}
-                    <button
-                      onClick={handleSaveAsImage}
-                      className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
-                    >
-                      <FileImage className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-medium block">Simpan Gambar Pohon</span>
-                        <span className="text-[10px] text-muted-foreground">Export pohon keluarga sebagai PNG</span>
-                      </div>
-                    </button>
-                  </div>
-                )}
-              </div>
+              <button
+                onClick={handleCopySilsilah}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
+              >
+                <Copy className="w-5 h-5" />
+                <span className="text-sm font-medium">Salin Teks Silsilah</span>
+              </button>
+              <button
+                onClick={handleSaveAsImage}
+                className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
+              >
+                <FileImage className="w-5 h-5" />
+                <span className="text-sm font-medium">Simpan Gambar Pohon</span>
+              </button>
             </div>
           </section>
 
