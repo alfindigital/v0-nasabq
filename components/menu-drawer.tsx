@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { X, Download, Upload, Trash2, Info, User, Type, Heart, Share2, Copy, FileImage, Link2, ChevronRight } from 'lucide-react'
+import { X, Download, Upload, Trash2, Info, User, Type, Heart, Share2, Copy, FileImage, ChevronRight } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
 import { ConfirmDialog } from './confirm-dialog'
 import { getRelationToSelf } from '@/lib/relationship'
@@ -96,65 +96,145 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
     }
   }
 
-  // Copy share data (JSON) to clipboard
-  const handleCopyShareData = async () => {
-    try {
-      const data = exportData()
-      const json = JSON.stringify(data)
-      await navigator.clipboard.writeText(json)
-      showToast('Data silsilah berhasil disalin! Bagikan ke keluarga untuk diimpor.')
-      onClose()
-    } catch (err) {
-      console.log('[v0] Copy share data error:', err)
-      showToast('Gagal menyalin data')
-    }
-  }
-
-  // Save tree as image
-  const handleSaveAsImage = async () => {
-    // Close drawer first to capture clean tree
-    onClose()
-    
-    // Small delay to allow drawer to close
-    await new Promise(resolve => setTimeout(resolve, 300))
-    
-    const treeElement = document.querySelector('[data-tree-canvas]')
-    if (!treeElement) {
-      showToast('Buka halaman Pohon terlebih dahulu')
+  // Save tree as image - generate SVG-based image
+  const handleSaveAsImage = () => {
+    if (!self) {
+      showToast('Tidak ada data untuk disimpan')
       return
     }
 
-    showToast('Menyiapkan gambar...')
+    // Generate a simple family tree representation as downloadable text/image
+    const generateTreeSVG = () => {
+      const width = 800
+      const nodeHeight = 60
+      const nodeWidth = 150
+      const verticalGap = 40
+      
+      // Build hierarchy
+      const buildHierarchy = (memberId: number, level: number = 0, visited = new Set<number>()): { member: typeof members[0], level: number, children: ReturnType<typeof buildHierarchy>[] } | null => {
+        if (visited.has(memberId)) return null
+        visited.add(memberId)
+        
+        const member = members.find(m => m.id === memberId)
+        if (!member) return null
+        
+        const children = getChildren(memberId)
+          .map(child => buildHierarchy(child.id, level + 1, new Set(visited)))
+          .filter((c): c is NonNullable<typeof c> => c !== null)
+        
+        return { member, level, children }
+      }
+
+      // Find root (oldest generation)
+      const roots = members.filter(m => getParents(m.id).length === 0)
+      
+      // Generate SVG content
+      let svgContent = ''
+      let y = 40
+      const processedIds = new Set<number>()
+
+      const drawMember = (member: typeof members[0], x: number, currentY: number, indent: number = 0) => {
+        if (processedIds.has(member.id)) return currentY
+        processedIds.add(member.id)
+        
+        const bgColor = member.isSelf ? '#10b981' : member.gender === 'M' ? '#0d6a51' : '#db4f8a'
+        const textColor = '#ffffff'
+        const name = member.nickname || member.name.split(' ')[0]
+        const label = member.isSelf ? ' (Kamu)' : ''
+        const deceased = member.isDeceased ? ' *' : ''
+        
+        svgContent += `
+          <rect x="${x + indent * 20}" y="${currentY}" width="${nodeWidth}" height="${nodeHeight - 10}" rx="8" fill="${bgColor}" />
+          <text x="${x + indent * 20 + nodeWidth/2}" y="${currentY + 25}" text-anchor="middle" fill="${textColor}" font-family="system-ui, sans-serif" font-size="12" font-weight="600">${name}${label}${deceased}</text>
+          ${member.birthYear ? `<text x="${x + indent * 20 + nodeWidth/2}" y="${currentY + 42}" text-anchor="middle" fill="${textColor}" font-family="system-ui, sans-serif" font-size="10" opacity="0.8">${member.birthYear}</text>` : ''}
+        `
+        
+        return currentY + nodeHeight + verticalGap / 2
+      }
+
+      // Sort members by generation
+      const getGen = (id: number, visited = new Set<number>()): number => {
+        if (visited.has(id)) return 0
+        visited.add(id)
+        const parents = getParents(id)
+        if (parents.length === 0) return 0
+        return 1 + Math.max(...parents.map(p => getGen(p.id, new Set(visited))))
+      }
+
+      const sortedMembers = [...members].sort((a, b) => {
+        const genDiff = getGen(a.id) - getGen(b.id)
+        if (genDiff !== 0) return genDiff
+        if (a.isSelf) return -1
+        if (b.isSelf) return 1
+        return a.name.localeCompare(b.name)
+      })
+
+      // Group by generation
+      const generations = new Map<number, typeof members>()
+      sortedMembers.forEach(m => {
+        const gen = getGen(m.id)
+        if (!generations.has(gen)) generations.set(gen, [])
+        generations.get(gen)!.push(m)
+      })
+
+      // Draw by generation
+      let currentY = 60
+      const sortedGens = [...generations.entries()].sort((a, b) => a[0] - b[0])
+      
+      sortedGens.forEach(([gen, genMembers]) => {
+        // Generation label
+        svgContent += `<text x="20" y="${currentY}" font-family="system-ui, sans-serif" font-size="11" fill="#666" font-weight="500">Generasi ${gen}</text>`
+        currentY += 20
+        
+        // Draw members in this generation
+        let x = 20
+        genMembers.forEach((member, idx) => {
+          if (x + nodeWidth > width - 20) {
+            x = 20
+            currentY += nodeHeight + 10
+          }
+          
+          const bgColor = member.isSelf ? '#10b981' : member.gender === 'M' ? '#0d6a51' : '#db4f8a'
+          const name = (member.nickname || member.name.split(' ')[0]).substring(0, 12)
+          const label = member.isSelf ? '*' : ''
+          const deceased = member.isDeceased ? ' (Alm)' : ''
+          
+          svgContent += `
+            <rect x="${x}" y="${currentY}" width="${nodeWidth}" height="${nodeHeight - 10}" rx="8" fill="${bgColor}" />
+            <text x="${x + nodeWidth/2}" y="${currentY + 22}" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="11" font-weight="600">${name}${label}</text>
+            <text x="${x + nodeWidth/2}" y="${currentY + 38}" text-anchor="middle" fill="#fff" font-family="system-ui, sans-serif" font-size="9" opacity="0.8">${member.birthYear || ''}${deceased}</text>
+          `
+          x += nodeWidth + 15
+        })
+        currentY += nodeHeight + 25
+      })
+
+      const totalHeight = currentY + 60
+
+      return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${totalHeight}" viewBox="0 0 ${width} ${totalHeight}">
+  <rect width="100%" height="100%" fill="#f5f5f0"/>
+  <text x="${width/2}" y="30" text-anchor="middle" font-family="system-ui, sans-serif" font-size="18" font-weight="bold" fill="#0d6a51">Silsilah Keluarga - NasabQ</text>
+  ${svgContent}
+  <text x="${width/2}" y="${totalHeight - 15}" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" fill="#999">* = Kamu | Total: ${members.length} anggota | Generated by NasabQ</text>
+</svg>`
+    }
 
     try {
-      // Dynamically import html2canvas
-      const html2canvas = (await import('html2canvas')).default
-      
-      // Get the inner content that contains the actual tree
-      const treeContent = treeElement.querySelector('div') as HTMLElement
-      const targetElement = treeContent || treeElement as HTMLElement
-      
-      const canvas = await html2canvas(targetElement, {
-        backgroundColor: '#f5f5f0', // Canvas background color
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        allowTaint: true,
-        foreignObjectRendering: false,
-      })
-      
-      // Create download link
+      const svg = generateTreeSVG()
+      const blob = new Blob([svg], { type: 'image/svg+xml' })
+      const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
-      link.download = `nasabq-silsilah-${new Date().toISOString().split('T')[0]}.png`
-      link.href = canvas.toDataURL('image/png', 1.0)
+      link.href = url
+      link.download = `nasabq-silsilah-${new Date().toISOString().split('T')[0]}.svg`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
-      
-      showToast('Gambar pohon keluarga berhasil disimpan!')
-    } catch (err) {
-      console.log('[v0] Save image error:', err)
-      showToast('Gagal menyimpan gambar. Coba lagi.')
+      URL.revokeObjectURL(url)
+      showToast('Gambar silsilah berhasil disimpan!')
+      onClose()
+    } catch {
+      showToast('Gagal menyimpan gambar')
     }
   }
 
@@ -340,18 +420,6 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
                       </div>
                     </button>
 
-                    {/* Copy Share Data */}
-                    <button
-                      onClick={handleCopyShareData}
-                      className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
-                    >
-                      <Link2 className="w-4 h-4" />
-                      <div className="flex-1 text-left">
-                        <span className="text-sm font-medium block">Salin Data Silsilah</span>
-                        <span className="text-[10px] text-muted-foreground">Bagikan ke keluarga untuk diimpor</span>
-                      </div>
-                    </button>
-
                     {/* Save as Image */}
                     <button
                       onClick={handleSaveAsImage}
@@ -360,7 +428,7 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
                       <FileImage className="w-4 h-4" />
                       <div className="flex-1 text-left">
                         <span className="text-sm font-medium block">Simpan Gambar Pohon</span>
-                        <span className="text-[10px] text-muted-foreground">Export pohon keluarga sebagai PNG</span>
+                        <span className="text-[10px] text-muted-foreground">Export sebagai gambar SVG</span>
                       </div>
                     </button>
                   </div>
