@@ -1,18 +1,16 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { ChevronRight, User, Search, X, Plus } from 'lucide-react'
+import { ChevronRight, User, Search, X } from 'lucide-react'
 import { useNasabStore } from '@/lib/store'
-import { getRelationToSelf } from '@/lib/relationship'
 import type { Member } from '@/lib/types'
 
 interface MemberListProps {
   onViewMember: (member: Member) => void
-  onAddMember: () => void
 }
 
-export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
-  const { members, getParents, getChildren, getSpouses } = useNasabStore()
+export function MemberList({ onViewMember }: MemberListProps) {
+  const { members, getParents } = useNasabStore()
   const self = members.find(m => m.isSelf)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -76,33 +74,37 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
       {/* Stats Header - Sticky */}
       <div className="sticky top-0 z-10 bg-background border-b border-border">
         <div className="p-3">
-          <div className="grid grid-cols-5 gap-1.5">
-            <div className="p-2 bg-card rounded-lg text-center">
-              <span className="font-display font-bold text-base text-primary">{stats.total}</span>
-              <p className="text-[9px] text-muted-foreground">Total</p>
+          {/* Row 1: Total and Gender breakdown */}
+          <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="p-3 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-lg text-primary">{stats.total}</span>
+              <p className="text-[10px] text-muted-foreground">Total Anggota</p>
             </div>
-            <div className="p-2 bg-card rounded-lg text-center">
-              <span className="font-display font-bold text-sm text-foreground">{stats.maleCount}</span>
-              <p className="text-[9px] text-muted-foreground">Laki-laki</p>
+            <div className="p-3 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-lg text-foreground">{stats.maleCount}</span>
+              <p className="text-[10px] text-muted-foreground">Laki-laki</p>
             </div>
-            <div className="p-2 bg-card rounded-lg text-center">
-              <span className="font-display font-bold text-sm text-female-accent">{stats.femaleCount}</span>
-              <p className="text-[9px] text-muted-foreground">Perempuan</p>
+            <div className="p-3 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-lg text-female-accent">{stats.femaleCount}</span>
+              <p className="text-[10px] text-muted-foreground">Perempuan</p>
             </div>
-            <div className="p-2 bg-card rounded-lg text-center">
-              <span className="font-display font-bold text-sm">{stats.spousePairs}</span>
-              <p className="text-[9px] text-muted-foreground">Keluarga</p>
+          </div>
+          {/* Row 2: Families and Generations */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-3 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-lg">{stats.spousePairs}</span>
+              <p className="text-[10px] text-muted-foreground">Keluarga</p>
             </div>
-            <div className="p-2 bg-card rounded-lg text-center">
-              <span className="font-display font-bold text-sm text-gold">{stats.generations}</span>
-              <p className="text-[9px] text-muted-foreground">Generasi</p>
+            <div className="p-3 bg-card rounded-lg text-center">
+              <span className="font-display font-bold text-lg text-gold">{stats.generations}</span>
+              <p className="text-[10px] text-muted-foreground">Generasi</p>
             </div>
           </div>
         </div>
 
-        {/* Search Bar + Add Button */}
-        <div className="px-3 pb-3 flex gap-2">
-          <div className="relative flex-1">
+        {/* Search Bar */}
+        <div className="px-3 pb-3">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <input
               type="text"
@@ -120,29 +122,23 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
               </button>
             )}
           </div>
-          <button
-            onClick={onAddMember}
-            className="flex items-center justify-center gap-1.5 h-10 px-3 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 active:bg-primary/80 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Tambah</span>
-          </button>
         </div>
       </div>
 
-      {/* Table Header */}
-      <div className="sticky top-[148px] z-10 bg-muted/80 border-b border-border">
-        <div className="grid grid-cols-12 gap-1 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-          <div className="col-span-4">Nama</div>
-          <div className="col-span-2 text-center">L/P</div>
-          <div className="col-span-2 text-center">Lahir</div>
-          <div className="col-span-3">Hubungan</div>
-          <div className="col-span-1"></div>
+      {/* Table Header - Horizontally scrollable */}
+      <div className="sticky top-[180px] z-10 bg-muted/80 border-b border-border overflow-x-auto">
+        <div className="min-w-[600px] grid grid-cols-[minmax(120px,1.5fr)_60px_60px_minmax(100px,1fr)_minmax(120px,1.5fr)_40px] gap-2 px-3 py-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          <div>Nama</div>
+          <div className="text-center">L/P</div>
+          <div className="text-center">Lahir</div>
+          <div>Domisili</div>
+          <div>Catatan</div>
+          <div></div>
         </div>
       </div>
 
-      {/* Member List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Member List - Horizontally scrollable */}
+      <div className="flex-1 overflow-y-auto overflow-x-auto">
         {filteredMembers.length === 0 ? (
           <div className="h-full flex items-center justify-center p-4">
             <p className="text-sm text-muted-foreground">
@@ -150,75 +146,72 @@ export function MemberList({ onViewMember, onAddMember }: MemberListProps) {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border/50">
-            {filteredMembers.map(member => {
-              const relationLabel = self && !member.isSelf
-                ? getRelationToSelf(member.id, self.id, members, getParents, getChildren, getSpouses)
-                : ''
-
-              return (
-                <button
-                  key={member.id}
-                  onClick={() => onViewMember(member)}
-                  className="w-full grid grid-cols-12 gap-1 px-3 py-2.5 items-center hover:bg-muted/50 active:bg-muted transition-colors text-left"
-                >
-                  {/* Name */}
-                  <div className="col-span-4 flex items-center gap-2 min-w-0">
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+          <div className="min-w-[600px] divide-y divide-border/50">
+            {filteredMembers.map(member => (
+              <button
+                key={member.id}
+                onClick={() => onViewMember(member)}
+                className="w-full grid grid-cols-[minmax(120px,1.5fr)_60px_60px_minmax(100px,1fr)_minmax(120px,1.5fr)_40px] gap-2 px-3 py-2.5 items-center hover:bg-muted/50 active:bg-muted transition-colors text-left"
+              >
+                {/* Name */}
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${
+                    member.isDeceased 
+                      ? 'bg-muted-foreground/20' 
+                      : member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
+                  }`}>
+                    <User className={`w-3.5 h-3.5 ${
                       member.isDeceased 
-                        ? 'bg-muted-foreground/20' 
-                        : member.gender === 'M' ? 'bg-primary/10' : 'bg-female-accent/10'
-                    }`}>
-                      <User className={`w-3.5 h-3.5 ${
-                        member.isDeceased 
-                          ? 'text-muted-foreground' 
-                          : member.gender === 'M' ? 'text-primary' : 'text-female-accent'
-                      }`} />
-                    </div>
-                    <div className="min-w-0">
-                      <p className={`text-xs font-medium truncate ${member.isDeceased ? 'text-muted-foreground' : ''}`}>
-                        {member.nickname || member.name.split(' ')[0]}
-                      </p>
-                      {member.isSelf && (
-                        <span className="px-1 py-0.5 text-[8px] font-semibold bg-gold/20 text-gold rounded">
-                          Kamu
-                        </span>
-                      )}
-                    </div>
+                        ? 'text-muted-foreground' 
+                        : member.gender === 'M' ? 'text-primary' : 'text-female-accent'
+                    }`} />
                   </div>
-
-                  {/* Gender */}
-                  <div className="col-span-2 text-center">
-                    <span className={`text-xs font-medium ${member.isDeceased ? 'text-muted-foreground' : member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`}>
-                      {member.gender === 'M' ? 'L' : 'P'}
-                    </span>
-                  </div>
-
-                  {/* Birth Year */}
-                  <div className="col-span-2 text-center">
-                    <span className="text-xs text-muted-foreground">
-                      {member.birthYear || '-'}
-                    </span>
-                  </div>
-
-                  {/* Relationship */}
-                  <div className="col-span-3">
-                    {relationLabel ? (
-                      <span className="px-1.5 py-0.5 text-[9px] font-medium bg-primary/10 text-primary rounded truncate block">
-                        {relationLabel}
+                  <div className="min-w-0">
+                    <p className={`text-xs font-medium truncate ${member.isDeceased ? 'text-muted-foreground' : ''}`}>
+                      {member.nickname || member.name.split(' ')[0]}
+                    </p>
+                    {member.isSelf && (
+                      <span className="px-1 py-0.5 text-[8px] font-semibold bg-gold/20 text-gold rounded">
+                        Kamu
                       </span>
-                    ) : (
-                      <span className="text-[9px] text-muted-foreground/50">-</span>
                     )}
                   </div>
+                </div>
 
-                  {/* Chevron */}
-                  <div className="col-span-1 flex justify-end">
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-                  </div>
-                </button>
-              )
-            })}
+                {/* Gender */}
+                <div className="text-center">
+                  <span className={`text-xs font-medium ${member.isDeceased ? 'text-muted-foreground' : member.gender === 'M' ? 'text-primary' : 'text-female-accent'}`}>
+                    {member.gender === 'M' ? 'L' : 'P'}
+                  </span>
+                </div>
+
+                {/* Birth Year */}
+                <div className="text-center">
+                  <span className="text-xs text-muted-foreground">
+                    {member.birthYear || '-'}
+                  </span>
+                </div>
+
+                {/* Domisili */}
+                <div className="min-w-0">
+                  <span className="text-xs text-muted-foreground truncate block">
+                    {member.address || '-'}
+                  </span>
+                </div>
+
+                {/* Catatan */}
+                <div className="min-w-0">
+                  <span className="text-xs text-muted-foreground truncate block">
+                    {member.notes || '-'}
+                  </span>
+                </div>
+
+                {/* Chevron */}
+                <div className="flex justify-end">
+                  <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
+                </div>
+              </button>
+            ))}
           </div>
         )}
       </div>
