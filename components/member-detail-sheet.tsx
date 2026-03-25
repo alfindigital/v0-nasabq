@@ -344,6 +344,30 @@ export function MemberDetailSheet({
                     <UserPlus className="w-3.5 h-3.5" />
                     Orang Tua
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false)
+                      onClose()
+                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'spouse' }), 100)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Pasangan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(false)
+                      onClose()
+                      setTimeout(() => onAddRelative({ targetId: member.id, relationshipType: 'child' }), 100)
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    Anak
+                  </button>
                 </div>
               </div>
             </div>

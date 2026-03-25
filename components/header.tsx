@@ -10,9 +10,12 @@ interface HeaderProps {
 
 export function Header({ darkMode, onToggleDarkMode }: HeaderProps) {
   return (
-    <header className="h-12 md:h-[52px] px-4 flex items-center justify-between bg-primary/10 border-b border-primary/20 sticky top-0 z-40">
-      {/* Logo & Title - aligned left */}
-      <NasabLogo size="md" showText textSize="md" />
+    <header className="h-14 md:h-[56px] px-4 flex items-center justify-between bg-primary/10 border-b border-primary/20 sticky top-0 z-40">
+      {/* Logo & Title with Tagline - aligned left */}
+      <div className="flex flex-col">
+        <NasabLogo size="sm" showText textSize="sm" />
+        <p className="text-[10px] text-muted-foreground -mt-0.5">Kenali Akar Keluargamu</p>
+      </div>
 
       {/* Dark Mode Toggle - aligned right */}
       <button
