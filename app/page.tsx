@@ -157,6 +157,10 @@ export default function Home() {
         open={addSheetOpen}
         onClose={() => {
           setAddSheetOpen(false)
+          // If opened from member detail (has context with targetId), return to detail sheet
+          if (addContext?.targetId && selectedMember) {
+            setDetailSheetOpen(true)
+          }
           setAddContext(null)
         }}
         context={addContext}
