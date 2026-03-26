@@ -86,11 +86,35 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
 
   // Copy silsilah text to clipboard
   const handleCopySilsilah = async () => {
-    const text = generateSilsilahText()
+    if (!self) {
+      showToast('Tidak ada data untuk disalin')
+      return
+    }
+    
     try {
-      await navigator.clipboard.writeText(text)
+      const text = generateSilsilahText()
+      
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-9999px'
+        textArea.style.top = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
+      
       showToast('Silsilah berhasil disalin!')
-    } catch {
+      onClose()
+    } catch (err) {
+      console.log('[v0] Copy error:', err)
       showToast('Gagal menyalin silsilah')
     }
   }
