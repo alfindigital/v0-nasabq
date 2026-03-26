@@ -86,11 +86,41 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
 
   // Copy silsilah text to clipboard
   const handleCopySilsilah = async () => {
-    const text = generateSilsilahText()
+    if (!self) {
+      showToast('Tidak ada data untuk disalin')
+      return
+    }
+    
     try {
-      await navigator.clipboard.writeText(text)
+      console.log('[v0] Starting generateSilsilahText')
+      const text = generateSilsilahText()
+      console.log('[v0] Generated text length:', text.length)
+      console.log('[v0] Text preview:', text.substring(0, 200))
+      
+      // Try modern clipboard API first
+      if (navigator.clipboard && window.isSecureContext) {
+        console.log('[v0] Using modern clipboard API')
+        await navigator.clipboard.writeText(text)
+      } else {
+        console.log('[v0] Using fallback textarea method')
+        // Fallback for older browsers or non-secure contexts
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        textArea.style.position = 'fixed'
+        textArea.style.left = '-9999px'
+        textArea.style.top = '-9999px'
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textArea)
+      }
+      
+      console.log('[v0] Copy successful')
       showToast('Silsilah berhasil disalin!')
-    } catch {
+      onClose()
+    } catch (err) {
+      console.log('[v0] Copy error:', err)
       showToast('Gagal menyalin silsilah')
     }
   }
@@ -591,7 +621,7 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
                 className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
               >
                 <Download className="w-5 h-5" />
-                <span className="text-sm font-medium">Export Data (JSON)</span>
+                <span className="text-sm font-medium">Export Data</span>
               </button>
 
               <div>

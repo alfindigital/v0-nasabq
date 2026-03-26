@@ -443,8 +443,17 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
             )}
 
             {members.length < 2 && (
-              <div className="p-4 bg-muted rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Minimal 2 orang untuk melihat hubungan.</p>
+              <div className="mt-6 p-5 bg-muted/50 rounded-xl border border-dashed border-border">
+                <div className="text-center space-y-2">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <User className="w-6 h-6 text-primary" />
+                  </div>
+                  <p className="text-sm font-medium text-foreground">Cara Menggunakan</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Tambahkan minimal <span className="font-semibold text-foreground">2 anggota keluarga</span> terlebih dahulu, 
+                    lalu pilih orang pertama dan orang kedua untuk melihat hubungan kekeluargaan di antara mereka.
+                  </p>
+                </div>
               </div>
             )}
           </div>
