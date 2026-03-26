@@ -442,8 +442,7 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
               </div>
             )}
 
-            {/* Tutorial hint - show when not both members selected */}
-            {members.length >= 2 && (!selectedMember1 || !selectedMember2) && (
+            {members.length < 2 && (
               <div className="mt-6 p-5 bg-muted/50 rounded-xl border border-dashed border-border">
                 <div className="text-center space-y-2">
                   <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
@@ -451,17 +450,10 @@ export function RelationshipExplorer({ onViewMember }: RelationshipExplorerProps
                   </div>
                   <p className="text-sm font-medium text-foreground">Cara Menggunakan</p>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Pilih <span className="font-semibold text-foreground">orang pertama</span> di dropdown atas, 
-                    lalu pilih <span className="font-semibold text-foreground">orang kedua</span> di dropdown bawah 
-                    untuk melihat hubungan kekeluargaan di antara mereka.
+                    Tambahkan minimal <span className="font-semibold text-foreground">2 anggota keluarga</span> terlebih dahulu, 
+                    lalu pilih orang pertama dan orang kedua untuk melihat hubungan kekeluargaan di antara mereka.
                   </p>
                 </div>
-              </div>
-            )}
-
-            {members.length < 2 && (
-              <div className="p-4 bg-muted rounded-xl text-center">
-                <p className="text-sm text-muted-foreground">Minimal 2 orang untuk melihat hubungan.</p>
               </div>
             )}
           </div>
