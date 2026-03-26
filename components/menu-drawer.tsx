@@ -113,8 +113,7 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
       
       showToast('Silsilah berhasil disalin!')
       onClose()
-    } catch (err) {
-      console.log('[v0] Copy error:', err)
+    } catch {
       showToast('Gagal menyalin silsilah')
     }
   }
@@ -615,7 +614,7 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
                 className="w-full p-3 bg-muted rounded-lg flex items-center gap-3 hover:bg-muted/80 active:scale-[0.98] transition-all"
               >
                 <Download className="w-5 h-5" />
-                <span className="text-sm font-medium">Export Data (JSON)</span>
+                <span className="text-sm font-medium">Export Data</span>
               </button>
 
               <div>
