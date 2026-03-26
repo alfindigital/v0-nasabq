@@ -21,11 +21,14 @@ interface PositionedNode {
 }
 
 interface Connection {
+  type: 'spouse' | 'vertical' | 'horizontal' | 'parent-child'
   x1: number
   y1: number
   x2: number
   y2: number
-  isSpouse?: boolean
+  // For parent-child connections with multiple children
+  childrenX?: number[]
+  midY?: number
 }
 
 const NODE_WIDTH = 140
@@ -299,7 +302,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     const drawnConnections = new Set<string>()
     
     nodePositions.forEach(pos => {
-      // Spouse connections (horizontal)
+      // Spouse connections (horizontal with heart)
       const spouses = spouseOf.get(pos.id) || new Set()
       spouses.forEach(spouseId => {
         const spousePos = positioned.get(spouseId)
@@ -313,7 +316,7 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
         const rightX = Math.max(pos.x, spousePos.x)
         const y = pos.y + NODE_HEIGHT / 2
         
-        lines.push({ x1: leftX, y1: y, x2: rightX, y2: y, isSpouse: true })
+        lines.push({ type: 'spouse', x1: leftX, y1: y, x2: rightX, y2: y })
       })
       
       // Skip children connections if collapsed
@@ -358,35 +361,19 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       if (childPositions.length === 0) return
       
       const midY = parentBottomY + V_GAP / 2
+      const childrenX = childPositions.map(cp => cp.x + NODE_WIDTH / 2)
+      const childY = childPositions[0].y
       
-      // Vertical from parent to mid
-      lines.push({ x1: parentCenterX, y1: parentBottomY, x2: parentCenterX, y2: midY })
-      
-      if (childPositions.length === 1) {
-        const childCenterX = childPositions[0].x + NODE_WIDTH / 2
-        if (Math.abs(childCenterX - parentCenterX) > 1) {
-          lines.push({ x1: parentCenterX, y1: midY, x2: childCenterX, y2: midY })
-        }
-        lines.push({ x1: childCenterX, y1: midY, x2: childCenterX, y2: childPositions[0].y })
-      } else {
-        const leftX = childPositions[0].x + NODE_WIDTH / 2
-        const rightX = childPositions[childPositions.length - 1].x + NODE_WIDTH / 2
-        
-        // Horizontal bar
-        lines.push({ x1: leftX, y1: midY, x2: rightX, y2: midY })
-        
-        // Connect parent to bar if needed
-        if (parentCenterX < leftX) {
-          lines.push({ x1: parentCenterX, y1: midY, x2: leftX, y2: midY })
-        } else if (parentCenterX > rightX) {
-          lines.push({ x1: rightX, y1: midY, x2: parentCenterX, y2: midY })
-        }
-        
-        // Verticals to each child
-        childPositions.forEach(cp => {
-          lines.push({ x1: cp.x + NODE_WIDTH / 2, y1: midY, x2: cp.x + NODE_WIDTH / 2, y2: cp.y })
-        })
-      }
+      // Single parent-child connection object with all children
+      lines.push({
+        type: 'parent-child',
+        x1: parentCenterX,
+        y1: parentBottomY,
+        x2: parentCenterX,
+        y2: childY,
+        childrenX,
+        midY
+      })
     })
     
     return { positions: nodePositions, connections: lines }
@@ -573,29 +560,100 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
           className="absolute pointer-events-none"
           style={{ left: -2000, top: -1000, width: 5000, height: 3000 }}
         >
+          <defs>
+            <linearGradient id="lineGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.3" />
+            </linearGradient>
+          </defs>
           <g transform="translate(2000, 1000)">
-            {connections.map((line, i) => (
-              <line
-                key={i}
-                x1={line.x1}
-                y1={line.y1}
-                x2={line.x2}
-                y2={line.y2}
-                stroke="var(--primary)"
-                strokeWidth={2}
-                strokeOpacity={line.isSpouse ? 0.6 : 0.4}
-              />
-            ))}
-            {connections.filter(l => l.isSpouse).map((line, i) => (
-              <circle
-                key={`m-${i}`}
-                cx={(line.x1 + line.x2) / 2}
-                cy={line.y1}
-                r={4}
-                fill="var(--primary)"
-                fillOpacity={0.6}
-              />
-            ))}
+            {connections.map((conn, i) => {
+              if (conn.type === 'spouse') {
+                // Spouse connection: curved line with heart marker
+                const midX = (conn.x1 + conn.x2) / 2
+                return (
+                  <g key={i}>
+                    <path
+                      d={`M ${conn.x1} ${conn.y1} Q ${midX} ${conn.y1 - 8} ${conn.x2} ${conn.y2}`}
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth={2}
+                      strokeOpacity={0.5}
+                      strokeLinecap="round"
+                    />
+                    <circle
+                      cx={midX}
+                      cy={conn.y1 - 4}
+                      r={5}
+                      fill="var(--primary)"
+                      fillOpacity={0.6}
+                    />
+                  </g>
+                )
+              }
+              
+              if (conn.type === 'parent-child' && conn.childrenX && conn.midY) {
+                // Parent to children: smooth curved connections
+                const { x1, y1, childrenX, midY, y2 } = conn
+                const curveRadius = 12
+                
+                return (
+                  <g key={i}>
+                    {childrenX.map((childX, ci) => {
+                      const isLeft = childX < x1
+                      const isRight = childX > x1
+                      const isStraight = Math.abs(childX - x1) < 2
+                      
+                      if (isStraight) {
+                        // Straight vertical line
+                        return (
+                          <path
+                            key={ci}
+                            d={`M ${x1} ${y1} L ${x1} ${y2}`}
+                            fill="none"
+                            stroke="url(#lineGradient)"
+                            strokeWidth={2}
+                            strokeLinecap="round"
+                          />
+                        )
+                      }
+                      
+                      // Curved path: down from parent, curve, horizontal, curve, down to child
+                      const verticalDrop = midY - y1
+                      const horizontalDist = childX - x1
+                      
+                      // Create smooth S-curve using cubic bezier
+                      const path = `
+                        M ${x1} ${y1}
+                        L ${x1} ${y1 + verticalDrop / 3}
+                        C ${x1} ${midY - curveRadius},
+                          ${x1} ${midY},
+                          ${x1 + (isRight ? curveRadius : -curveRadius)} ${midY}
+                        L ${childX - (isRight ? curveRadius : -curveRadius)} ${midY}
+                        C ${childX} ${midY},
+                          ${childX} ${midY + curveRadius},
+                          ${childX} ${midY + curveRadius * 2}
+                        L ${childX} ${y2}
+                      `
+                      
+                      return (
+                        <path
+                          key={ci}
+                          d={path}
+                          fill="none"
+                          stroke="url(#lineGradient)"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      )
+                    })}
+                  </g>
+                )
+              }
+              
+              return null
+            })}
           </g>
         </svg>
 
