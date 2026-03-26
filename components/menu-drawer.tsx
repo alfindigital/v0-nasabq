@@ -92,12 +92,17 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
     }
     
     try {
+      console.log('[v0] Starting generateSilsilahText')
       const text = generateSilsilahText()
+      console.log('[v0] Generated text length:', text.length)
+      console.log('[v0] Text preview:', text.substring(0, 200))
       
       // Try modern clipboard API first
       if (navigator.clipboard && window.isSecureContext) {
+        console.log('[v0] Using modern clipboard API')
         await navigator.clipboard.writeText(text)
       } else {
+        console.log('[v0] Using fallback textarea method')
         // Fallback for older browsers or non-secure contexts
         const textArea = document.createElement('textarea')
         textArea.value = text
@@ -111,9 +116,11 @@ export function MenuDrawer({ open, onClose, onViewSelf, showToast }: MenuDrawerP
         document.body.removeChild(textArea)
       }
       
+      console.log('[v0] Copy successful')
       showToast('Silsilah berhasil disalin!')
       onClose()
-    } catch {
+    } catch (err) {
+      console.log('[v0] Copy error:', err)
       showToast('Gagal menyalin silsilah')
     }
   }
