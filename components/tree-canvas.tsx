@@ -600,39 +600,36 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
                 return (
                   <g key={i}>
                     {childrenX.map((childX, ci) => {
-                      const isLeft = childX < x1
-                      const isRight = childX > x1
-                      const isStraight = Math.abs(childX - x1) < 2
+                      const horizontalDiff = Math.abs(childX - x1)
+                      const isStraight = horizontalDiff < 20
                       
                       if (isStraight) {
-                        // Straight vertical line
+                        // Straight vertical line (or nearly straight)
+                        const midPointX = (x1 + childX) / 2
                         return (
                           <path
                             key={ci}
-                            d={`M ${x1} ${y1} L ${x1} ${y2}`}
+                            d={`M ${x1} ${y1} L ${midPointX} ${midY} L ${childX} ${y2}`}
                             fill="none"
                             stroke="url(#lineGradient)"
                             strokeWidth={2}
                             strokeLinecap="round"
+                            strokeLinejoin="round"
                           />
                         )
                       }
                       
-                      // Curved path: down from parent, curve, horizontal, curve, down to child
-                      const verticalDrop = midY - y1
-                      const horizontalDist = childX - x1
+                      // Curved path for children that are offset horizontally
+                      const isRight = childX > x1
+                      const curveDir = isRight ? 1 : -1
                       
-                      // Create smooth S-curve using cubic bezier
+                      // Create smooth path with rounded corners
                       const path = `
                         M ${x1} ${y1}
-                        L ${x1} ${y1 + verticalDrop / 3}
-                        C ${x1} ${midY - curveRadius},
-                          ${x1} ${midY},
-                          ${x1 + (isRight ? curveRadius : -curveRadius)} ${midY}
-                        L ${childX - (isRight ? curveRadius : -curveRadius)} ${midY}
-                        C ${childX} ${midY},
-                          ${childX} ${midY + curveRadius},
-                          ${childX} ${midY + curveRadius * 2}
+                        L ${x1} ${midY - curveRadius}
+                        Q ${x1} ${midY}, ${x1 + curveRadius * curveDir} ${midY}
+                        L ${childX - curveRadius * curveDir} ${midY}
+                        Q ${childX} ${midY}, ${childX} ${midY + curveRadius}
                         L ${childX} ${y2}
                       `
                       
