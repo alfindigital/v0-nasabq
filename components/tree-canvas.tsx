@@ -300,8 +300,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
     
     // Step 10: Draw connections
     const drawnConnections = new Set<string>()
-    console.log('[v0] childOf map:', Array.from(childOf.entries()).map(([k, v]) => [members.find(m => m.id === k)?.name, Array.from(v).map(cid => members.find(m => m.id === cid)?.name)]))
-    console.log('[v0] positioned members:', Array.from(positioned.keys()).map(id => members.find(m => m.id === id)?.name))
     
     nodePositions.forEach(pos => {
       // Spouse connections (horizontal with heart)
@@ -322,19 +320,11 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       })
       
       // Skip children connections if collapsed
-      if (collapsedNodes.has(pos.id)) {
-        console.log('[v0] Skipping collapsed node:', member?.name)
-        return
-      }
+      if (collapsedNodes.has(pos.id)) return
       
       // Parent-to-children connections
       const children = childOf.get(pos.id) || new Set()
       const visibleChildIds = Array.from(children).filter(cid => positioned.has(cid))
-      
-      const member = members.find(m => m.id === pos.id)
-      const childrenNames = Array.from(children).map(cid => members.find(m => m.id === cid)?.name)
-      const visibleChildNames = visibleChildIds.map(cid => members.find(m => m.id === cid)?.name)
-      console.log('[v0] Checking parent:', member?.name, 'children:', childrenNames, 'positioned children:', visibleChildNames)
       
       if (visibleChildIds.length === 0) return
       
@@ -375,7 +365,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
       const childY = childPositions[0].y
       
       // Single parent-child connection object with all children
-      console.log('[v0] Creating connection:', member?.name, '-> children at X:', childrenX, 'parentCenterX:', parentCenterX, 'midY:', midY, 'childY:', childY)
       lines.push({
         type: 'parent-child',
         x1: parentCenterX,
@@ -578,7 +567,6 @@ export function TreeCanvas({ onViewMember, onAddRelative }: TreeCanvasProps) {
             </linearGradient>
           </defs>
           <g transform="translate(2000, 1000)">
-            {console.log('[v0] Rendering connections:', connections.length, connections)}
             {connections.map((conn, i) => {
               if (conn.type === 'spouse') {
                 // Spouse connection: curved line with heart marker
