@@ -1,35 +1,43 @@
-# v0-nasabq
+# NasabQ — Silsilah & Pohon Keluarga
 
-This is a [Next.js](https://nextjs.org) project bootstrapped with [v0](https://v0.app).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org)
 
-## Built with v0
+Aplikasi pohon keluarga (family tree) dan silsilah nasab berbasis web. Tambah anggota keluarga, visualisasikan hubungan, eksplorasi relasi. Semua data tersimpan lokal di browser — tanpa akun, tanpa server.
 
-This repository is linked to a [v0](https://v0.app) project. You can continue developing by visiting the link below -- start new chats to make changes, and v0 will push commits directly to this repo. Every merge to `main` will automatically deploy.
+---
 
-[Continue working on v0 →](https://v0.app/chat/projects/prj_WniRMHIJGcEXyKexdvD0BfTBB7h7)
+## Fitur
 
-## Getting Started
+- 🌳 **Pohon Keluarga** — Visualisasi silsilah interaktif
+- 👥 **Manajemen Anggota** — Tambah, edit, detail anggota
+- 🔍 **Relationship Explorer** — Jelajahi hubungan antar anggota
+- 📱 **PWA** — Installable, bisa dipakai offline
+- 💾 **Local-first** — Data di browser, no cloud, no login
+- 🌐 **No Backend** — Fully client-side
 
-First, run the development server:
+---
+
+## Quick Start
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
+git clone https://github.com/alfindigital/v0-nasabq.git
+cd v0-nasabq
+npm install
+npm run dev     # http://localhost:3000
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-## Learn More
+- Next.js 15 (App Router) + TypeScript
+- Tailwind CSS + shadcn/ui
+- Built with [v0.dev](https://v0.dev)
 
-To learn more, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-- [v0 Documentation](https://v0.app/docs) - learn about v0 and how to use it.
+## Lisensi
 
-<a href="https://v0.app/chat/api/kiro/clone/alfindigital/v0-nasabq" alt="Open in Kiro"><img src="https://pdgvvgmkdvyeydso.public.blob.vercel-storage.com/open%20in%20kiro.svg?sanitize=true" /></a>
+[MIT](LICENSE)
